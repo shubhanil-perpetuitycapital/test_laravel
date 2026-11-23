@@ -34,6 +34,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureRateLimiting();
 
+        if (app()->environment('production')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // Company identity and WhatsApp helper available in every view.
         View::composer('*', function ($view) {
             $view->with('company', app(CompanyProfile::class));
@@ -43,7 +47,7 @@ class AppServiceProvider extends ServiceProvider
         // Category list for storefront navigation, cached for 10 minutes.
         View::composer(['layouts.app', 'partials.*'], function ($view) {
             try {
-                $categories = Cache::remember('nav_categories', 600, fn () => Category::query()
+                $categories = Cache::remember('nav_categories', 600, fn() => Category::query()
                     ->active()->ordered()->get(['id', 'name', 'slug']));
             } catch (Throwable) {
                 $categories = collect();
@@ -63,6 +67,6 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Storefront AJAX endpoints (filters, search).
-        RateLimiter::for('storefront-ajax', fn (Request $request) => Limit::perMinute(90)->by($request->ip()));
+        RateLimiter::for('storefront-ajax', fn(Request $request) => Limit::perMinute(90)->by($request->ip()));
     }
 }
