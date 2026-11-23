@@ -35,7 +35,8 @@ COPY --from=assets /app/public/build ./public/build
 RUN composer dump-autoload --optimize --no-dev --classmap-authoritative \
  && php artisan package:discover --ansi || true
 
-COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+RUN rm -f /etc/nginx/http.d/default.conf && mkdir -p /run/nginx
 COPY docker/php.ini /usr/local/etc/php/conf.d/zz-app.ini
 COPY docker/www.conf /usr/local/etc/php-fpm.d/zz-app.conf
 COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/entrypoint.sh
