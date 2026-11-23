@@ -1,58 +1,62 @@
 #!/bin/sh
-# =============================================================
-# Runs on every container start, before nginx/php-fpm.
-# Toggle steps with env vars (all default to "true"):
-#   RUN_MIGRATIONS   php artisan migrate --force
-#   SEED_ADMIN       create/update the admin user from ADMIN_* vars
-#   CACHE_CONFIG     config/route/view cache for speed
-# =============================================================
 set -e
 cd /var/www/html
 
-artisan() { su-exec www-data php artisan "$@"; }
-
-if [ -z "$APP_KEY" ]; then
-  echo "ERROR: APP_KEY is not set. Generate one with: php artisan key:generate --show" >&2
-  exit 1
-fi
-
-# Storage may be an empty mounted volume on first start — recreate its folders.
-mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions \
-         storage/framework/views storage/logs bootstrap/cache
+# Named volume on /storage starts empty on some hosts — recreate the tree.
+mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views \
+         storage/logs storage/app/public bootstrap/cache
 chown -R www-data:www-data storage bootstrap/cache
 
-# Wait for MySQL (up to ~60s).
-if [ "${DB_CONNECTION:-mysql}" = "mysql" ]; then
-  echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT:-3306} ..."
-  i=0
-  until php -r 'try { new PDO("mysql:host=".getenv("DB_HOST").";port=".(getenv("DB_PORT") ?: 3306), getenv("DB_USERNAME"), getenv("DB_PASSWORD")); } catch (Exception $e) { exit(1); }' 2>/dev/null; do
-    i=$((i + 1))
-    if [ "$i" -ge 30 ]; then
-      echo "ERROR: could not connect to MySQL. Check DB_HOST / DB_USERNAME / DB_PASSWORD." >&2
-      exit 1
-    fi
-    sleep 2
-  done
-  echo "MySQL is ready."
-fi
+# ---- Wait for MySQL (up to ~2 minutes), printing the real error ----
+DB_HOST="${DB_HOST:-mysql}"
+DB_PORT="${DB_PORT:-3306}"
+tries=0
+until php -r '
+  try {
+    new PDO("mysql:host=".getenv("DB_HOST").";port=".getenv("DB_PORT").";dbname=".getenv("DB_DATABASE"),
+            getenv("DB_USERNAME"), getenv("DB_PASSWORD"), [PDO::ATTR_TIMEOUT => 3]);
+    exit(0);
+  } catch (Throwable $e) { fwrite(STDERR, "  -> ".$e->getMessage().PHP_EOL); exit(1); }'
+do
+  tries=$((tries + 1))
+  if [ "$tries" -ge 40 ]; then
+    echo "ERROR: could not connect to MySQL at ${DB_HOST}:${DB_PORT} as ${DB_USERNAME}."
+    echo "       Is the 'mysql' service running? (Coolify must use the Docker Compose build pack.)"
+    exit 1
+  fi
+  echo "Waiting for MySQL at ${DB_HOST}:${DB_PORT} ... (${tries}/40)"
+  sleep 3
+done
+echo "MySQL is up."
 
-# Clear any stale caches from a previous start before running commands.
-artisan optimize:clear > /dev/null
-
-artisan storage:link --force > /dev/null 2>&1 || true
+# ---- Laravel bootstrap ----
+php artisan storage:link --force >/dev/null 2>&1 || true
+php artisan optimize:clear >/dev/null 2>&1 || true
 
 if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
-  artisan migrate --force
+  php artisan migrate --force
 fi
 
+# Seed only on a fresh database (no users yet), so redeploys don't duplicate data.
 if [ "${SEED_ADMIN:-true}" = "true" ]; then
-  artisan db:seed --class=AdminUserSeeder --force
+  users=$(php -r '
+    try {
+      $p = new PDO("mysql:host=".getenv("DB_HOST").";port=".getenv("DB_PORT").";dbname=".getenv("DB_DATABASE"),
+                   getenv("DB_USERNAME"), getenv("DB_PASSWORD"));
+      echo (int) $p->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    } catch (Throwable $e) { echo 0; }')
+  if [ "$users" = "0" ]; then
+    echo "Fresh database — running seeders."
+    php artisan db:seed --force
+  fi
 fi
 
-if [ "${CACHE_CONFIG:-true}" = "true" ]; then
-  artisan config:cache
-  artisan route:cache
-  artisan view:cache
-fi
+php artisan config:cache
+php artisan route:cache || true
+php artisan view:cache || true
 
-exec "$@"
+chown -R www-data:www-data storage bootstrap/cache
+
+php-fpm -D
+echo "Starting nginx on :8080"
+exec nginx -g 'daemon off;'
