@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('type', 10)->default('fixed');        // fixed | percent
             $table->decimal('value', 10, 2);
             $table->decimal('min_order_amount', 10, 2)->nullable();
-            $table->decimal('max_discount', 10, 2)->nullable();  // cap for percent coupons
+            $table->decimal('max_discount', 10, 2)->nullable();
             $table->unsignedInteger('usage_limit')->nullable();
             $table->unsignedInteger('used_count')->default(0);
             $table->timestamp('starts_at')->nullable();
@@ -29,15 +29,17 @@ return new class extends Migration
             $table->id();
             $table->string('order_number', 30)->unique();
             $table->foreignId('customer_id')->constrained()->restrictOnDelete();
+            $table->string('source', 20)->default('website');   // website | admin | enquiry
 
             $table->string('status', 30)->default('pending')->index();
             $table->string('payment_method', 20);               // upi | cod
-            $table->string('payment_status', 20)->default('unpaid')->index(); // unpaid | submitted | paid | refunded
+            $table->string('payment_status', 20)->default('unpaid')->index();
             $table->string('payment_reference', 100)->nullable();
             $table->string('payment_screenshot')->nullable();   // private disk path
+            $table->timestamp('payment_submitted_at')->nullable();
 
-            // Delivery address snapshot: where THIS order went (an address can change between orders).
-            $table->string('delivery_method', 20);             // local | outstation
+            // Delivery address snapshot: where THIS order went.
+            $table->string('delivery_method', 20);              // local | outstation
             $table->foreignId('delivery_zone_id')->nullable()->constrained()->nullOnDelete();
             $table->string('recipient_name', 120);
             $table->string('recipient_mobile', 15);
@@ -48,17 +50,19 @@ return new class extends Migration
             $table->string('delivery_instructions', 500)->nullable();
             $table->text('order_notes')->nullable();
             $table->date('expected_delivery_date')->nullable();
+            $table->string('delivery_estimate_text')->nullable();
 
             $table->decimal('subtotal', 10, 2);
             $table->foreignId('coupon_id')->nullable()->constrained()->nullOnDelete();
             $table->string('coupon_code', 40)->nullable();
             $table->decimal('discount_amount', 10, 2)->default(0);
             $table->decimal('delivery_charge', 10, 2)->default(0);
-            $table->boolean('delivery_charge_pending')->default(false); // outstation: admin confirms charge
+            $table->boolean('delivery_charge_pending')->default(false);
             $table->decimal('total', 10, 2);
 
             $table->string('courier_name', 100)->nullable();
             $table->string('tracking_number', 100)->nullable();
+            $table->string('tracking_url')->nullable();
             $table->text('internal_notes')->nullable();
 
             $table->timestamps();
@@ -87,6 +91,7 @@ return new class extends Migration
             $table->string('from_status', 30)->nullable();
             $table->string('to_status', 30);
             $table->text('comment')->nullable();
+            $table->boolean('visible_to_customer')->default(true);
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->timestamps();
         });
@@ -105,8 +110,8 @@ return new class extends Migration
             $table->date('required_date')->nullable();
             $table->string('delivery_pincode', 6)->nullable();
             $table->text('message')->nullable();
-            $table->string('reference_image')->nullable();
-            $table->string('status', 20)->default('new')->index(); // new | contacted | quoted | converted | closed
+            $table->string('reference_image')->nullable();    // private disk path
+            $table->string('status', 20)->default('new')->index();
             $table->decimal('quoted_amount', 10, 2)->nullable();
             $table->text('quotation_notes')->nullable();
             $table->text('internal_notes')->nullable();

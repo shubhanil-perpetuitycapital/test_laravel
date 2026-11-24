@@ -15,20 +15,20 @@ return new class extends Migration
             $table->string('name', 120);
             $table->string('mobile', 15)->unique();
             $table->string('email')->nullable()->index();
-            $table->text('notes')->nullable();          // internal admin notes
+            $table->text('notes')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
 
         Schema::create('delivery_zones', function (Blueprint $table) {
             $table->id();
-            $table->string('name', 120);                      // e.g. "Central Kolkata"
+            $table->string('name', 120);
             $table->text('description')->nullable();
             $table->decimal('delivery_charge', 10, 2)->default(0);
             $table->decimal('free_delivery_threshold', 10, 2)->nullable();
             $table->boolean('same_day_available')->default(false);
-            $table->time('same_day_cutoff')->nullable();      // e.g. 14:00
-            $table->unsignedTinyInteger('lead_days')->default(1); // days to deliver when not same-day
+            $table->time('same_day_cutoff')->nullable();
+            $table->unsignedTinyInteger('lead_days')->default(1);
             $table->string('estimated_text')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();

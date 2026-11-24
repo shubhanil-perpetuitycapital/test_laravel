@@ -5,7 +5,7 @@
     $canonical = $seo?->canonical ?: url()->current();
 @endphp
 <title>{{ $title }}</title>
-<meta name="description" content="{{ \Illuminate\Support\Str::limit(strip_tags($description), 170) }}">
+<meta name="description" content="{{ \Illuminate\Support\Str::limit(strip_tags((string) $description), 170) }}">
 <link rel="canonical" href="{{ $canonical }}">
 @if ($seo?->noindex || ! app()->environment('production'))
     <meta name="robots" content="noindex, follow">
@@ -17,7 +17,7 @@
 <meta property="og:site_name" content="{{ $company->name() }}">
 <meta property="og:type" content="{{ $seo?->type === 'product' ? 'product' : 'website' }}">
 <meta property="og:title" content="{{ $title }}">
-<meta property="og:description" content="{{ \Illuminate\Support\Str::limit(strip_tags($description), 200) }}">
+<meta property="og:description" content="{{ \Illuminate\Support\Str::limit(strip_tags((string) $description), 200) }}">
 <meta property="og:url" content="{{ $canonical }}">
 <meta property="og:image" content="{{ $image }}">
 <meta property="og:locale" content="en_IN">

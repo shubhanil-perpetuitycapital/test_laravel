@@ -19,8 +19,8 @@ class SeoData
         public array $schema = [],
     ) {}
 
-    public static function make(?string $title = null, ?string $description = null): self
+    public static function make(?string $title = null, ?string $description = null, bool $noindex = false): self
     {
-        return new self($title, $description);
+        return new self(title: $title, description: $description, noindex: $noindex);
     }
 }

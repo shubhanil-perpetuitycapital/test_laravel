@@ -14,19 +14,18 @@ class ShopController extends Controller
 {
     public function index(ShopFilterRequest $request, CatalogService $catalog, CompanyProfile $company, ?Category $category = null): View|JsonResponse
     {
-        if ($category && ! $category->is_active) {
-            abort(404);
-        }
+        abort_if($category && ! $category->is_active, 404);
 
         $filters = $request->filters();
         $products = $catalog->paginate($filters, $category, (int) config('store.products_per_page', 12));
+        $heading = $this->heading($category, $filters);
 
         // Fetch-based filtering: return only the grid HTML and the result count.
         if ($request->wantsJson()) {
             return response()->json([
                 'html' => view('shop._results', compact('products', 'filters', 'category'))->render(),
                 'count' => $products->total(),
-                'title' => $this->heading($category, $filters),
+                'title' => $heading,
             ]);
         }
 
@@ -36,13 +35,11 @@ class ShopController extends Controller
 
         $priceRange = $catalog->priceRange();
         $sorts = CatalogService::SORTS;
-        $heading = $this->heading($category, $filters);
 
         $seo = new SeoData(
             title: ($category?->meta_title ?: $heading).' | '.$company->name(),
             description: $category?->meta_description ?: ($category?->description ?: $company->metaDescription()),
             canonical: $category ? route('shop.index', $category) : route('shop.index'),
-            // Filtered and searched listings are thin duplicates of the main shop.
             noindex: filled($filters['q'] ?? null) || filled($filters['min_price'] ?? null) || filled($filters['max_price'] ?? null),
         );
 

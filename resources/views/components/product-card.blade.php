@@ -23,9 +23,20 @@
         @endif
         <div class="product-card__foot">
             <x-price :product="$product" />
-            <a href="{{ $product->url }}" class="product-card__go" aria-label="View {{ $product->name }}">
-                <i class="bi bi-arrow-right" aria-hidden="true"></i>
-            </a>
+            @if ($product->in_stock)
+                <form method="post" action="{{ route('cart.store') }}" class="product-card__add" data-add-to-cart>
+                    @csrf
+                    <input type="hidden" name="product_id" value="{{ $product->id }}">
+                    <input type="hidden" name="quantity" value="1">
+                    <button type="submit" class="product-card__go" aria-label="Add {{ $product->name }} to cart">
+                        <i class="bi bi-bag-plus" aria-hidden="true"></i>
+                    </button>
+                </form>
+            @else
+                <a href="{{ $product->url }}" class="product-card__go" aria-label="View {{ $product->name }}">
+                    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </a>
+            @endif
         </div>
     </div>
 </article>

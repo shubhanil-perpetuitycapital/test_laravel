@@ -18,20 +18,12 @@ class Category extends Model
 
     protected function casts(): array
     {
-        return [
-            'is_active' => 'boolean',
-            'display_order' => 'integer',
-        ];
+        return ['is_active' => 'boolean', 'display_order' => 'integer'];
     }
 
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
-    }
-
-    public function activeProducts(): HasMany
-    {
-        return $this->products()->where('is_active', true);
     }
 
     public function scopeActive(Builder $query): Builder

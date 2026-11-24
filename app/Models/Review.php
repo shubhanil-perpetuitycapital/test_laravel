@@ -15,16 +15,12 @@ class Review extends Model
 
     protected function casts(): array
     {
-        return [
-            'rating' => 'integer',
-            'is_approved' => 'boolean',
-            'is_featured' => 'boolean',
-        ];
+        return ['rating' => 'integer', 'is_approved' => 'boolean', 'is_featured' => 'boolean'];
     }
 
     public function product(): BelongsTo
     {
-        return $this->belongsTo(Product::class);
+        return $this->belongsTo(Product::class)->withTrashed();
     }
 
     public function order(): BelongsTo

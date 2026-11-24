@@ -16,7 +16,6 @@
                 <p>Send a message, photo or voice note.</p>
                 <span class="contact-card__action">Start chat</span>
             </a>
-
             @if ($company->phone())
                 <a href="{{ $company->phoneHref() }}" class="contact-card">
                     <i class="bi bi-telephone" aria-hidden="true"></i>
@@ -25,7 +24,6 @@
                     <span class="contact-card__action">Call now</span>
                 </a>
             @endif
-
             @if ($company->email())
                 <a href="mailto:{{ $company->email() }}" class="contact-card">
                     <i class="bi bi-envelope" aria-hidden="true"></i>
@@ -63,15 +61,24 @@
             @endif
         </div>
 
-        @if (count($company->socialLinks()))
-            <div class="contact-social">
-                <h2 class="h4">Follow along</h2>
-                <ul class="social-list social-list--dark">
-                    @foreach ($company->socialLinks() as $link)
-                        <li><a href="{{ $link['url'] }}" target="_blank" rel="noopener" aria-label="{{ $link['label'] }}"><i class="bi {{ $link['icon'] }}" aria-hidden="true"></i></a></li>
-                    @endforeach
-                </ul>
+        <div class="row g-4 pb-5">
+            <div class="col-md-6">
+                <div class="narrow-card m-0">
+                    <h2 class="h5">Planning something special?</h2>
+                    <p class="text-muted-choc">Weddings, corporate gifts and personalised chocolates.</p>
+                    <a href="{{ route('custom-orders.create') }}" class="btn btn-choc">Request a custom quote</a>
+                </div>
             </div>
-        @endif
+            @if (count($company->socialLinks()))
+                <div class="col-md-6">
+                    <h2 class="h4">Follow along</h2>
+                    <ul class="social-list social-list--dark">
+                        @foreach ($company->socialLinks() as $link)
+                            <li><a href="{{ $link['url'] }}" target="_blank" rel="noopener" aria-label="{{ $link['label'] }}"><i class="bi {{ $link['icon'] }}" aria-hidden="true"></i></a></li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+        </div>
     </div>
 @endsection

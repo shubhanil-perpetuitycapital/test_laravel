@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Services\CatalogService;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -26,23 +27,18 @@ class ShopFilterRequest extends FormRequest
         ];
     }
 
-    /**
-     * Invalid filter values are dropped rather than shown as errors:
-     * a bad query string should still render the shop.
-     */
-    protected function failedValidation(\Illuminate\Contracts\Validation\Validator $validator): void
+    /** Invalid filter values are dropped: a bad query string still renders the shop. */
+    protected function failedValidation(Validator $validator): void
     {
         $this->replace(collect($this->query())->except(array_keys($validator->errors()->messages()))->all());
     }
 
-    /** @return array<string, mixed> */
     public function filters(): array
     {
         $filters = $this->only(['q', 'min_price', 'max_price', 'sort', 'type']);
         $filters['in_stock'] = $this->boolean('in_stock');
         $filters['q'] = isset($filters['q']) ? trim((string) $filters['q']) : null;
 
-        // Swap reversed price bounds instead of returning nothing.
         if (filled($filters['min_price'] ?? null) && filled($filters['max_price'] ?? null)
             && (float) $filters['min_price'] > (float) $filters['max_price']) {
             [$filters['min_price'], $filters['max_price']] = [$filters['max_price'], $filters['min_price']];

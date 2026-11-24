@@ -22,19 +22,13 @@ class HomepageContentSeeder extends Seeder
             ]);
         }
 
-        // Placeholder tiles for the Instagram grid; replace with real photos.
+        // Placeholder tiles for the Instagram grid; replace with real photos in Admin → Instagram gallery.
         if (GalleryItem::query()->doesntExist()) {
             $images = ['truffles.svg', 'product-ruby.svg', 'giftbox-gold.svg', 'bonbons.svg',
                 'product-wrapped.svg', 'giftbox-pink.svg', 'product-milk.svg', 'giftbox-cream.svg'];
 
             foreach ($images as $i => $image) {
-                GalleryItem::query()->create([
-                    'image' => 'images/placeholders/'.$image,
-                    'caption' => null,
-                    'link_url' => null,
-                    'sort_order' => $i,
-                    'is_active' => true,
-                ]);
+                GalleryItem::query()->create(['image' => 'images/placeholders/'.$image, 'sort_order' => $i, 'is_active' => true]);
             }
         }
     }

@@ -38,23 +38,22 @@ class CompanyProfile
 
     public function logoUrl(): ?string
     {
-        return media_url($this->settings->get('logo'), null);
+        return media_url($this->settings->raw('logo'), null);
     }
 
-    /** Logo for dark surfaces; falls back to the regular logo. */
     public function logoLightUrl(): ?string
     {
-        return media_url($this->settings->get('logo_light'), null) ?? $this->logoUrl();
+        return media_url($this->settings->raw('logo_light'), null) ?? $this->logoUrl();
     }
 
     public function faviconUrl(): string
     {
-        return media_url($this->settings->get('favicon'), 'favicon.ico');
+        return media_url($this->settings->raw('favicon'), 'favicon.ico');
     }
 
     public function ogImageUrl(): string
     {
-        return media_url($this->settings->get('og_image'), 'images/placeholders/og-default.svg');
+        return media_url($this->settings->raw('og_image'), 'images/placeholders/og-default.svg');
     }
 
     public function phone(): ?string
@@ -67,7 +66,6 @@ class CompanyProfile
         return $this->settings->get('phone_alt');
     }
 
-    /** tel: link target, digits and leading + only. */
     public function phoneHref(?string $phone = null): ?string
     {
         $phone ??= $this->phone();
@@ -92,7 +90,7 @@ class CompanyProfile
         return $this->settings->bool('show_address_publicly');
     }
 
-    /** Full postal address as lines (for invoices and the contact page). */
+    /** Full postal address as lines (invoices, contact page). */
     public function addressLines(): array
     {
         $cityLine = trim(implode(' ', array_filter([
@@ -124,6 +122,11 @@ class CompanyProfile
         return (string) $this->settings->get('city');
     }
 
+    public function state(): string
+    {
+        return (string) $this->settings->get('state');
+    }
+
     public function mapsUrl(): ?string
     {
         return $this->showFullAddress() ? $this->settings->get('google_maps_url') : null;
@@ -151,11 +154,12 @@ class CompanyProfile
         return $handle ? '@'.ltrim($handle, '@') : null;
     }
 
-    /**
-     * Configured social profiles only.
-     *
-     * @return array<int, array{key:string,label:string,icon:string,url:string}>
-     */
+    public function instagramUrl(): ?string
+    {
+        return $this->settings->get('instagram_url');
+    }
+
+    /** @return array<int, array{key:string,label:string,icon:string,url:string}> */
     public function socialLinks(): array
     {
         $map = [
@@ -179,11 +183,6 @@ class CompanyProfile
         return $links;
     }
 
-    public function instagramUrl(): ?string
-    {
-        return $this->settings->get('instagram_url');
-    }
-
     public function metaTitle(): string
     {
         return (string) ($this->settings->get('meta_title') ?: $this->name());
@@ -204,12 +203,10 @@ class CompanyProfile
         return $this->settings->get('google_analytics_id');
     }
 
-    /** Two-letter monogram used when no logo is uploaded (favicon-style badges). */
     public function initials(): string
     {
-        $words = preg_split('/\s+/', trim($this->name())) ?: [];
         $letters = '';
-        foreach (array_slice($words, 0, 2) as $word) {
+        foreach (array_slice(preg_split('/\s+/', trim($this->name())) ?: [], 0, 2) as $word) {
             $letters .= mb_strtoupper(mb_substr($word, 0, 1));
         }
 

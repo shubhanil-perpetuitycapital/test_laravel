@@ -7,14 +7,12 @@ use App\Support\SettingsSchema;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Throwable;
 
 /**
  * Reads and writes admin-configured settings.
  *
- * All values are loaded with one query and cached (file cache on shared
+ * All values load with one query and are cached (file cache on shared
  * hosting); the cache is cleared whenever settings are saved.
  */
 class SettingService
@@ -23,6 +21,8 @@ class SettingService
 
     /** @var array<string, mixed>|null in-request memo */
     private ?array $values = null;
+
+    public function __construct(private ImageService $images) {}
 
     public function get(string $key, mixed $default = null): mixed
     {
@@ -35,9 +35,24 @@ class SettingService
         return $default ?? (SettingsSchema::defaults()[$key] ?? null);
     }
 
+    /** Raw stored value without falling back to defaults. */
+    public function raw(string $key): mixed
+    {
+        return $this->all()[$key] ?? null;
+    }
+
     public function bool(string $key): bool
     {
-        return filter_var($this->get($key) ?? '0', FILTER_VALIDATE_BOOLEAN);
+        $value = $this->all()[$key] ?? (SettingsSchema::defaults()[$key] ?? '0');
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    public function float(string $key): ?float
+    {
+        $value = $this->get($key);
+
+        return is_numeric($value) ? (float) $value : null;
     }
 
     /** @return array<string, mixed> */
@@ -56,16 +71,13 @@ class SettingService
                 return Setting::query()->pluck('value', 'key')->all();
             });
         } catch (Throwable) {
-            // Database not configured yet (fresh install) — fall back to defaults.
-            $this->values = [];
+            $this->values = []; // database not configured yet (fresh install)
         }
 
         return $this->values;
     }
 
     /**
-     * Persist many values at once.
-     *
      * @param  array<string, mixed>  $values  key => value
      * @param  array<string, string>  $groups  key => group name
      */
@@ -74,36 +86,27 @@ class SettingService
         foreach ($values as $key => $value) {
             Setting::query()->updateOrCreate(
                 ['key' => $key],
-                [
-                    'group' => $groups[$key] ?? 'general',
-                    'value' => is_bool($value) ? ($value ? '1' : '0') : $value,
-                ]
+                ['group' => $groups[$key] ?? 'general', 'value' => is_bool($value) ? ($value ? '1' : '0') : $value]
             );
         }
 
         $this->flush();
     }
 
-    /**
-     * Store an uploaded image on the public uploads disk, deleting the
-     * file it replaces. Returns the relative path saved in settings.
-     */
-    public function storeImage(string $key, UploadedFile $file, string $folder = 'branding'): string
+    /** Store an uploaded image, deleting the file it replaces. */
+    public function storeImage(string $key, UploadedFile $file): string
     {
         $this->deleteImage($key);
 
-        $name = Str::slug($key).'-'.Str::random(8).'.'.$file->extension();
+        // Favicons and QR codes must stay pixel-exact; everything else is resized.
+        $maxWidth = in_array($key, ['favicon', 'upi_qr'], true) ? null : 1600;
 
-        return $file->storeAs($folder, $name, 'uploads');
+        return $this->images->store($file, 'branding', $maxWidth);
     }
 
     public function deleteImage(string $key): void
     {
-        $current = Setting::query()->where('key', $key)->value('value');
-
-        if ($current && ! str_starts_with($current, 'images/')) {
-            Storage::disk('uploads')->delete($current);
-        }
+        $this->images->delete(Setting::query()->where('key', $key)->value('value'));
     }
 
     public function flush(): void

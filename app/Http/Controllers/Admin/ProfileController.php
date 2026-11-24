@@ -26,6 +26,6 @@ class ProfileController extends Controller
 
         $user->save();
 
-        return back()->with('success', 'Your profile has been updated.');
+        return back()->with('success', 'Your account has been updated.');
     }
 }

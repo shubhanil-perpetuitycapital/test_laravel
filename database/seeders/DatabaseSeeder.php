@@ -9,9 +9,8 @@ class DatabaseSeeder extends Seeder
     /**
      * php artisan migrate --seed
      *
-     * Safe to run again: every seeder uses updateOrCreate / firstOrCreate,
-     * so re-seeding never duplicates rows or overwrites the owner's edits
-     * to company settings.
+     * Safe to run again: seeders use firstOrCreate / updateOrCreate, so
+     * re-seeding never duplicates rows or overwrites the owner's settings.
      */
     public function run(): void
     {
@@ -22,6 +21,7 @@ class DatabaseSeeder extends Seeder
             PageSeeder::class,
             DeliverySeeder::class,
             HomepageContentSeeder::class,
+            CouponSeeder::class,
         ]);
 
         // Demo reviews are for local development only — never on a live store.

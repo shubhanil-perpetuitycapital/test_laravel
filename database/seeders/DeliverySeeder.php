@@ -6,8 +6,8 @@ use App\Models\DeliveryZone;
 use Illuminate\Database\Seeder;
 
 /**
- * Starting delivery zones for Kolkata. Charges, cut-off times and PIN codes
- * are examples — the owner edits them in Admin → Delivery (Phase 4).
+ * Starting delivery areas for Kolkata. Charges, cut-off times and PIN codes
+ * are examples — the owner edits them in Admin → Delivery areas.
  */
 class DeliverySeeder extends Seeder
 {
@@ -18,12 +18,9 @@ class DeliverySeeder extends Seeder
                 'zone' => [
                     'name' => 'Central & South Kolkata',
                     'description' => 'Park Street, Ballygunge, Gariahat, Bhowanipore, Alipore, Tollygunge, Jadavpur.',
-                    'delivery_charge' => 60,
-                    'free_delivery_threshold' => 1500,
-                    'same_day_available' => true,
-                    'same_day_cutoff' => '14:00:00',
-                    'lead_days' => 1,
-                    'estimated_text' => 'Same day if ordered before 2 pm, otherwise next day.',
+                    'delivery_charge' => 60, 'free_delivery_threshold' => 1500,
+                    'same_day_available' => true, 'same_day_cutoff' => '14:00:00', 'lead_days' => 1,
+                    'estimated_text' => 'Delivered between 4 pm and 9 pm.',
                 ],
                 'pincodes' => [
                     '700016' => 'Park Street', '700017' => 'Park Circus', '700019' => 'Ballygunge',
@@ -36,12 +33,9 @@ class DeliverySeeder extends Seeder
                 'zone' => [
                     'name' => 'Salt Lake & New Town',
                     'description' => 'Bidhannagar sectors, New Town action areas, Kestopur, Baguiati.',
-                    'delivery_charge' => 80,
-                    'free_delivery_threshold' => 1800,
-                    'same_day_available' => true,
-                    'same_day_cutoff' => '13:00:00',
-                    'lead_days' => 1,
-                    'estimated_text' => 'Same day if ordered before 1 pm, otherwise next day.',
+                    'delivery_charge' => 80, 'free_delivery_threshold' => 1800,
+                    'same_day_available' => true, 'same_day_cutoff' => '13:00:00', 'lead_days' => 1,
+                    'estimated_text' => 'Delivered between 4 pm and 9 pm.',
                 ],
                 'pincodes' => [
                     '700064' => 'Salt Lake Sector I', '700091' => 'Salt Lake Sector V', '700097' => 'Salt Lake Sector III',
@@ -54,11 +48,8 @@ class DeliverySeeder extends Seeder
                 'zone' => [
                     'name' => 'North Kolkata',
                     'description' => 'Shyambazar, Baranagar, Dum Dum, Lake Town, Ultadanga.',
-                    'delivery_charge' => 80,
-                    'free_delivery_threshold' => 1800,
-                    'same_day_available' => false,
-                    'same_day_cutoff' => null,
-                    'lead_days' => 1,
+                    'delivery_charge' => 80, 'free_delivery_threshold' => 1800,
+                    'same_day_available' => false, 'same_day_cutoff' => null, 'lead_days' => 1,
                     'estimated_text' => 'Delivered the next day.',
                 ],
                 'pincodes' => [
@@ -71,7 +62,6 @@ class DeliverySeeder extends Seeder
 
         foreach ($zones as $data) {
             $zone = DeliveryZone::query()->updateOrCreate(['name' => $data['zone']['name']], $data['zone'] + ['is_active' => true]);
-
             foreach ($data['pincodes'] as $pincode => $area) {
                 $zone->pincodes()->updateOrCreate(['pincode' => (string) $pincode], ['area_name' => $area, 'is_active' => true]);
             }

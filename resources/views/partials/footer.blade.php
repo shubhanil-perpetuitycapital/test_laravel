@@ -26,13 +26,14 @@
                     @foreach ($navCategories as $navCategory)
                         <li><a href="{{ route('shop.index', $navCategory->slug) }}">{{ $navCategory->name }}</a></li>
                     @endforeach
-                    <li><a href="{{ route('shop.index', ['type' => 'bestseller']) }}">Bestsellers</a></li>
+                    <li><a href="{{ route('custom-orders.create') }}">Custom orders</a></li>
                 </ul>
             </div>
 
             <div class="col-6 col-lg-2">
                 <h2 class="site-footer__heading">Help</h2>
                 <ul class="site-footer__links">
+                    <li><a href="{{ route('track.index') }}">Track your order</a></li>
                     <li><a href="{{ route('pages.show', 'faq') }}">FAQ</a></li>
                     <li><a href="{{ route('pages.show', 'shipping-delivery-policy') }}">Shipping &amp; delivery</a></li>
                     <li><a href="{{ route('pages.show', 'cancellation-refund-policy') }}">Cancellations &amp; refunds</a></li>

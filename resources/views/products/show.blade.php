@@ -17,7 +17,7 @@
             <div class="col-lg-6">
                 @php $images = $product->images; @endphp
                 <div class="pd-gallery">
-                    <div id="pdCarousel" class="carousel slide pd-gallery__main" data-bs-touch="true" data-bs-ride="false">
+                    <div id="pdCarousel" class="carousel slide pd-gallery__main" data-bs-touch="true">
                         <div class="carousel-inner">
                             @forelse ($images as $image)
                                 <div @class(['carousel-item', 'active' => $loop->first])>
@@ -40,7 +40,7 @@
                         @endif
                     </div>
                     @if ($images->count() > 1)
-                        <div class="pd-gallery__thumbs" role="tablist" aria-label="Product photos">
+                        <div class="pd-gallery__thumbs" aria-label="Product photos">
                             @foreach ($images as $image)
                                 <button type="button" data-bs-target="#pdCarousel" data-bs-slide-to="{{ $loop->index }}"
                                         @class(['active' => $loop->first]) aria-label="Photo {{ $loop->iteration }}"
@@ -62,7 +62,7 @@
                     @if ($averageRating)
                         <a href="#reviews" class="pd-summary__rating">
                             <i class="bi bi-star-fill" aria-hidden="true"></i> {{ $averageRating }}
-                            <span>({{ $reviews->count() }} {{ \Illuminate\Support\Str::plural('review', $reviews->count()) }})</span>
+                            <span>({{ $reviewCount }} {{ \Illuminate\Support\Str::plural('review', $reviewCount) }})</span>
                         </a>
                     @endif
 
@@ -94,28 +94,34 @@
                         <div><dt>SKU</dt><dd>{{ $product->sku }}</dd></div>
                     </dl>
 
-                    <div class="pd-buy" data-product-buy
-                         data-wa-number="{{ $whatsapp->businessNumber() }}"
-                         data-wa-template="{{ $whatsapp->productEnquiryMessage($product, '{qty}') }}"
-                         data-max="{{ max(1, $product->stock_quantity) }}">
-                        @if ($product->in_stock)
+                    @if ($product->in_stock)
+                        @php $maxQty = min($product->stock_quantity, config('store.max_line_quantity')); @endphp
+                        <form method="post" action="{{ route('cart.store') }}" id="buyForm" class="pd-buy" data-add-to-cart data-product-buy
+                              data-wa-number="{{ $whatsapp->businessNumber() }}"
+                              data-wa-template="{{ $whatsapp->productEnquiryMessage($product, '{qty}') }}"
+                              data-max="{{ $maxQty }}">
+                            @csrf
+                            <input type="hidden" name="product_id" value="{{ $product->id }}">
                             <div class="qty" role="group" aria-label="Quantity">
                                 <button type="button" class="qty__btn" data-qty-step="-1" aria-label="Decrease quantity"><i class="bi bi-dash" aria-hidden="true"></i></button>
                                 <label for="qty" class="visually-hidden">Quantity</label>
-                                <input type="number" id="qty" class="qty__input" value="1" min="1" max="{{ $product->stock_quantity }}" inputmode="numeric" data-qty-input>
+                                <input type="number" id="qty" name="quantity" class="qty__input" value="1" min="1" max="{{ $maxQty }}" inputmode="numeric" data-qty-input>
                                 <button type="button" class="qty__btn" data-qty-step="1" aria-label="Increase quantity"><i class="bi bi-plus" aria-hidden="true"></i></button>
                             </div>
-                            <a href="{{ $whatsapp->productEnquiryLink($product, 1) }}" class="btn btn-choc btn-lg pd-buy__main" target="_blank" rel="noopener" data-wa-order>
-                                <i class="bi bi-whatsapp me-1" aria-hidden="true"></i> Order on WhatsApp
-                            </a>
-                        @else
-                            <a href="{{ $whatsapp->link('Hi! Please let me know when "'.$product->name.'" is back in stock. '.$product->url) }}"
-                               class="btn btn-outline-choc btn-lg pd-buy__main" target="_blank" rel="noopener">
-                                <i class="bi bi-bell me-1" aria-hidden="true"></i> Ask when it's back
-                            </a>
-                        @endif
-                    </div>
-                    <p class="pd-buy__note">Opens WhatsApp with this chocolate and quantity filled in. You send the message; we confirm the total and delivery.</p>
+                            <button type="submit" class="btn btn-choc btn-lg pd-buy__main">
+                                <i class="bi bi-bag-plus me-1" aria-hidden="true"></i> Add to cart
+                            </button>
+                            <button type="submit" name="buy_now" value="1" class="btn btn-gold btn-lg pd-buy__now">Buy now</button>
+                        </form>
+                        <a href="{{ $whatsapp->productEnquiryLink($product, 1) }}" class="pd-wa-link" target="_blank" rel="noopener" data-wa-order>
+                            <i class="bi bi-whatsapp" aria-hidden="true"></i> Ask about this on WhatsApp
+                        </a>
+                    @else
+                        <a href="{{ $whatsapp->link('Hi! Please let me know when "'.$product->name.'" is back in stock. '.$product->url) }}"
+                           class="btn btn-outline-choc btn-lg w-100" target="_blank" rel="noopener">
+                            <i class="bi bi-bell me-1" aria-hidden="true"></i> Ask when it's back
+                        </a>
+                    @endif
 
                     <div class="accordion pd-details" id="pdDetails">
                         @if ($product->description)
@@ -143,9 +149,7 @@
                                 <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#pdAllergen" aria-expanded="false" aria-controls="pdAllergen">Allergen information</button>
                             </h2>
                             <div id="pdAllergen" class="accordion-collapse collapse">
-                                <div class="accordion-body">
-                                    {!! nl2br(e($product->allergens ?: 'Made in a kitchen that handles milk, nuts, gluten and soy.')) !!}
-                                </div>
+                                <div class="accordion-body">{!! nl2br(e($product->allergens ?: 'Made in a kitchen that handles milk, nuts, gluten and soy.')) !!}</div>
                             </div>
                         </div>
                         <div class="accordion-item">
@@ -165,24 +169,55 @@
         </div>
 
         {{-- Reviews --}}
-        @if ($reviews->isNotEmpty())
-            <section class="section pb-0" id="reviews">
-                <x-section-head title="Reviews" />
-                <div class="review-list">
-                    @foreach ($reviews as $review)
-                        <figure class="review-card review-card--light">
-                            <div class="review-card__stars" aria-label="{{ $review->rating }} out of 5 stars">
-                                @for ($i = 1; $i <= 5; $i++)
-                                    <i class="bi {{ $i <= $review->rating ? 'bi-star-fill' : 'bi-star' }}" aria-hidden="true"></i>
+        <section class="section pb-0" id="reviews">
+            <x-section-head title="Reviews" />
+            <div class="row g-4">
+                <div class="col-lg-7">
+                    @forelse ($reviews as $review)
+                        <figure class="review-card review-card--light mb-3">
+                            <x-stars :rating="$review->rating" class="review-card__stars" />
+                            <blockquote>{{ $review->comment }}</blockquote>
+                            <figcaption>{{ $review->customer_name }}@if ($review->location), {{ $review->location }}@endif · {{ $review->created_at->format('M Y') }}</figcaption>
+                        </figure>
+                    @empty
+                        <p class="text-muted-choc">No reviews yet. Tried it? Be the first to tell others what you thought.</p>
+                    @endforelse
+                </div>
+                <div class="col-lg-5">
+                    <form method="post" action="{{ route('reviews.store', $product) }}" class="review-form" novalidate>
+                        @csrf
+                        <h3 class="h5">Write a review</h3>
+                        <fieldset class="mb-3">
+                            <legend class="form-label">Your rating</legend>
+                            <div class="star-input">
+                                @for ($i = 5; $i >= 1; $i--)
+                                    <input type="radio" id="rating{{ $i }}" name="rating" value="{{ $i }}" @checked((int) old('rating') === $i)>
+                                    <label for="rating{{ $i }}" title="{{ $i }} {{ \Illuminate\Support\Str::plural('star', $i) }}"><i class="bi bi-star-fill" aria-hidden="true"></i><span class="visually-hidden">{{ $i }} stars</span></label>
                                 @endfor
                             </div>
-                            <blockquote>{{ $review->comment }}</blockquote>
-                            <figcaption>{{ $review->customer_name }} · {{ $review->created_at->format('M Y') }}</figcaption>
-                        </figure>
-                    @endforeach
+                            <x-field-error name="rating" />
+                        </fieldset>
+                        <div class="row g-2 mb-2">
+                            <div class="col-sm-6">
+                                <label for="rvName" class="form-label">Name</label>
+                                <input id="rvName" name="customer_name" value="{{ old('customer_name') }}" maxlength="120" required @class(['form-control', 'is-invalid' => $errors->has('customer_name')])>
+                                <x-field-error name="customer_name" />
+                            </div>
+                            <div class="col-sm-6">
+                                <label for="rvLoc" class="form-label">Area <span class="text-muted-choc">(optional)</span></label>
+                                <input id="rvLoc" name="location" value="{{ old('location') }}" maxlength="120" class="form-control" placeholder="Salt Lake">
+                            </div>
+                        </div>
+                        <label for="rvComment" class="form-label">Your review</label>
+                        <textarea id="rvComment" name="comment" rows="3" maxlength="1000" required @class(['form-control', 'is-invalid' => $errors->has('comment')])>{{ old('comment') }}</textarea>
+                        <x-field-error name="comment" />
+                        <input type="text" name="website" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">
+                        <button type="submit" class="btn btn-outline-choc mt-3">Submit review</button>
+                        <p class="form-text">Reviews appear after we check them.</p>
+                    </form>
                 </div>
-            </section>
-        @endif
+            </div>
+        </section>
 
         {{-- Related --}}
         @if ($related->isNotEmpty())
@@ -204,9 +239,9 @@
             <strong>{{ money($product->effective_price) }}</strong>
         </div>
         @if ($product->in_stock)
-            <a href="{{ $whatsapp->productEnquiryLink($product, 1) }}" class="btn btn-choc" target="_blank" rel="noopener" data-wa-order>
-                <i class="bi bi-whatsapp me-1" aria-hidden="true"></i> Order
-            </a>
+            <button type="submit" form="buyForm" class="btn btn-choc">
+                <i class="bi bi-bag-plus me-1" aria-hidden="true"></i> Add to cart
+            </button>
         @else
             <span class="stock stock--out">Sold out</span>
         @endif

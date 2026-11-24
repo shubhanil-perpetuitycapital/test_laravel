@@ -32,7 +32,7 @@ class AdminUserSeeder extends Seeder
         User::query()->create([
             'name' => config('store.admin.name'),
             'email' => $email,
-            'password' => $password,   // hashed by the model cast
+            'password' => $password,
             'role' => User::ROLE_ADMIN,
             'is_active' => true,
             'email_verified_at' => now(),

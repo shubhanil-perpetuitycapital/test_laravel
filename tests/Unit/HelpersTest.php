@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\HtmlSanitizer;
 use App\Services\WhatsAppService;
 use PHPUnit\Framework\TestCase;
 
@@ -24,5 +25,17 @@ class HelpersTest extends TestCase
         $this->assertSame('919830012345', WhatsAppService::normalizeNumber('+91 98300-12345'));
         $this->assertSame('919830012345', WhatsAppService::normalizeNumber('09830012345'));
         $this->assertSame('447700900123', WhatsAppService::normalizeNumber('+44 7700 900123'));
+    }
+
+    public function test_html_sanitizer_keeps_formatting_and_strips_scripts(): void
+    {
+        $clean = (new HtmlSanitizer())->clean('<h2 style="color:red">Hi</h2><a href="javascript:alert(1)">x</a><img src=x onerror=alert(1)><script>bad()</script><details><summary>Q</summary><p>A</p></details>');
+
+        $this->assertStringContainsString('<h2>Hi</h2>', $clean);
+        $this->assertStringContainsString('<details><summary>Q</summary>', $clean);
+        $this->assertStringNotContainsString('javascript', $clean);
+        $this->assertStringNotContainsString('onerror', $clean);
+        $this->assertStringNotContainsString('script', $clean);
+        $this->assertStringNotContainsString('style', $clean);
     }
 }

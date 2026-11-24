@@ -14,10 +14,10 @@ return new class extends Migration
             $table->foreignId('order_id')->nullable()->constrained()->nullOnDelete();
             $table->string('customer_name', 120);
             $table->string('location', 120)->nullable();
-            $table->unsignedTinyInteger('rating');            // 1..5
+            $table->unsignedTinyInteger('rating');
             $table->text('comment');
             $table->boolean('is_approved')->default(false);
-            $table->boolean('is_featured')->default(false);     // shown on homepage
+            $table->boolean('is_featured')->default(false);
             $table->timestamps();
 
             $table->index(['is_approved', 'is_featured']);
@@ -47,8 +47,6 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Homepage "From our Instagram" grid. Images are uploaded by the owner
-        // and link to the post, so no Instagram API token is needed.
         Schema::create('gallery_items', function (Blueprint $table) {
             $table->id();
             $table->string('image');

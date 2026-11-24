@@ -15,12 +15,11 @@ class ProductController extends Controller
     {
         $product->load(['category', 'images']);
 
-        if (! $product->is_active || ! $product->category?->is_active) {
-            abort(404);
-        }
+        abort_if(! $product->is_active || ! $product->category?->is_active, 404);
 
         $reviews = $product->reviews()->approved()->latest()->limit(10)->get();
-        $averageRating = $reviews->isNotEmpty() ? round($reviews->avg('rating'), 1) : null;
+        $reviewCount = $product->reviews()->approved()->count();
+        $averageRating = $reviewCount ? round((float) $product->reviews()->approved()->avg('rating'), 1) : null;
         $related = $catalog->related($product);
 
         $description = $product->meta_description
@@ -43,13 +42,8 @@ class ProductController extends Controller
                 'url' => $product->url,
             ],
         ];
-
         if ($averageRating) {
-            $schema['aggregateRating'] = [
-                '@type' => 'AggregateRating',
-                'ratingValue' => $averageRating,
-                'reviewCount' => $reviews->count(),
-            ];
+            $schema['aggregateRating'] = ['@type' => 'AggregateRating', 'ratingValue' => $averageRating, 'reviewCount' => $reviewCount];
         }
 
         $seo = new SeoData(
@@ -61,6 +55,6 @@ class ProductController extends Controller
             schema: [$schema],
         );
 
-        return view('products.show', compact('product', 'reviews', 'averageRating', 'related', 'seo'));
+        return view('products.show', compact('product', 'reviews', 'reviewCount', 'averageRating', 'related', 'seo'));
     }
 }

@@ -28,7 +28,7 @@ class LoginRequest extends FormRequest
     }
 
     /**
-     * Attempt sign-in, locking the email+IP pair out after 5 failures.
+     * Attempt sign-in, locking the email+IP pair out for 5 minutes after 5 failures.
      *
      * @throws ValidationException
      */
@@ -36,14 +36,10 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        $credentials = $this->only('email', 'password') + ['is_active' => true];
-
-        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
+        if (! Auth::attempt($this->only('email', 'password') + ['is_active' => true], $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey(), 300);
 
-            throw ValidationException::withMessages([
-                'email' => 'These details do not match an active admin account.',
-            ]);
+            throw ValidationException::withMessages(['email' => 'These details do not match an active admin account.']);
         }
 
         RateLimiter::clear($this->throttleKey());
@@ -59,9 +55,7 @@ class LoginRequest extends FormRequest
 
         $minutes = (int) ceil(RateLimiter::availableIn($this->throttleKey()) / 60);
 
-        throw ValidationException::withMessages([
-            'email' => "Too many sign-in attempts. Try again in {$minutes} minute(s).",
-        ]);
+        throw ValidationException::withMessages(['email' => "Too many sign-in attempts. Try again in {$minutes} minute(s)."]);
     }
 
     private function throttleKey(): string

@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..700;1,6..96,400..600&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{{ asset('assets/css/store.css') }}?v={{ filemtime(public_path('assets/css/store.css')) }}" rel="stylesheet">
+    <link href="{{ asset('assets/css/store.css') }}?v={{ @filemtime(public_path('assets/css/store.css')) }}" rel="stylesheet">
 
     @stack('head')
 
@@ -36,12 +36,17 @@
     @include('partials.header')
 
     <main id="main" class="site-main">
-        @if (session('success'))
+        @if (session('success') || $errors->has('cart'))
             <div class="container pt-3">
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
+                @if (session('success'))
+                    <div class="alert alert-success alert-dismissible fade show" role="status">
+                        {{ session('success') }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                @endif
+                @error('cart')
+                    <div class="alert alert-warning" role="alert">{{ $message }}</div>
+                @enderror
             </div>
         @endif
 
@@ -52,8 +57,19 @@
     @include('partials.mobile-nav')
     @include('partials.whatsapp-float')
 
+    {{-- Add-to-cart toast, filled by store.js --}}
+    <div class="toast-container position-fixed toast-slot">
+        <div id="cartToast" class="toast cart-toast" role="status" aria-live="polite" aria-atomic="true">
+            <div class="toast-body">
+                <i class="bi bi-bag-check" aria-hidden="true"></i>
+                <span data-toast-message></span>
+                <a href="{{ route('cart.index') }}" class="cart-toast__link">View cart</a>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-    <script src="{{ asset('assets/js/store.js') }}?v={{ filemtime(public_path('assets/js/store.js')) }}" defer></script>
+    <script src="{{ asset('assets/js/store.js') }}?v={{ @filemtime(public_path('assets/js/store.js')) }}" defer></script>
     @stack('scripts')
 </body>
 </html>

@@ -5,16 +5,19 @@
         <nav class="site-nav d-none d-lg-flex" aria-label="Main">
             <a href="{{ route('home') }}" @class(['site-nav__link', 'is-active' => request()->routeIs('home')])>Home</a>
             <div class="dropdown">
-                <a href="{{ route('shop.index') }}" @class(['site-nav__link dropdown-toggle', 'is-active' => request()->routeIs('shop.*', 'products.*')])
+                <a href="{{ route('shop.index') }}" @class(['site-nav__link dropdown-toggle', 'is-active' => request()->routeIs('shop.*', 'products.*') && request('type') !== 'gift'])
                    data-bs-toggle="dropdown" aria-expanded="false" role="button">Shop</a>
                 <ul class="dropdown-menu site-nav__menu">
                     <li><a class="dropdown-item" href="{{ route('shop.index') }}">All chocolates</a></li>
                     @foreach ($navCategories as $navCategory)
                         <li><a class="dropdown-item" href="{{ route('shop.index', $navCategory->slug) }}">{{ $navCategory->name }}</a></li>
                     @endforeach
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ route('shop.index', ['type' => 'bestseller']) }}">Bestsellers</a></li>
                 </ul>
             </div>
             <a href="{{ route('shop.index', ['type' => 'gift']) }}" @class(['site-nav__link', 'is-active' => request('type') === 'gift'])>Gift boxes</a>
+            <a href="{{ route('custom-orders.create') }}" @class(['site-nav__link', 'is-active' => request()->routeIs('custom-orders.*')])>Custom orders</a>
             <a href="{{ route('pages.show', 'about-us') }}" @class(['site-nav__link', 'is-active' => request()->is('page/about-us')])>Our story</a>
             <a href="{{ route('contact') }}" @class(['site-nav__link', 'is-active' => request()->routeIs('contact')])>Contact</a>
         </nav>
@@ -24,13 +27,15 @@
                     aria-controls="headerSearch" aria-expanded="false" aria-label="Search chocolates">
                 <i class="bi bi-search" aria-hidden="true"></i>
             </button>
-            @if ($company->phone())
-                <a class="icon-btn d-none d-md-inline-flex" href="{{ $company->phoneHref() }}" aria-label="Call {{ $company->phone() }}">
-                    <i class="bi bi-telephone" aria-hidden="true"></i>
-                </a>
-            @endif
-            <a class="btn btn-choc btn-sm d-none d-lg-inline-flex" href="{{ $whatsapp->generalLink() }}" target="_blank" rel="noopener">
-                <i class="bi bi-whatsapp me-1" aria-hidden="true"></i> Order on WhatsApp
+            <a class="icon-btn d-none d-md-inline-flex" href="{{ route('track.index') }}" aria-label="Track your order" title="Track your order">
+                <i class="bi bi-box-seam" aria-hidden="true"></i>
+            </a>
+            <a class="icon-btn icon-btn--cart" href="{{ route('cart.index') }}" aria-label="Cart, {{ $cartCount }} {{ \Illuminate\Support\Str::plural('item', $cartCount) }}">
+                <i class="bi bi-bag" aria-hidden="true"></i>
+                <span class="cart-badge" data-cart-count @if (! $cartCount) hidden @endif>{{ $cartCount }}</span>
+            </a>
+            <a class="btn btn-choc btn-sm d-none d-xl-inline-flex ms-1" href="{{ $whatsapp->generalLink() }}" target="_blank" rel="noopener">
+                <i class="bi bi-whatsapp me-1" aria-hidden="true"></i> WhatsApp us
             </a>
         </div>
     </div>

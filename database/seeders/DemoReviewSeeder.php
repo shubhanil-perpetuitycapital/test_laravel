@@ -10,9 +10,9 @@ use Illuminate\Database\Seeder;
  * DEMO DATA FOR LOCAL DEVELOPMENT ONLY.
  *
  * Lets you see the review sections while building. DatabaseSeeder skips
- * this seeder when APP_ENV=production; publishing invented reviews on a
- * real store would mislead customers. Delete these before going live:
- *   php artisan tinker --execute="App\Models\Review::where('location','Demo review')->delete();"
+ * this when APP_ENV=production: publishing invented reviews on a real
+ * store would mislead customers. Every demo review is labelled as such
+ * and can be deleted in Admin → Reviews.
  */
 class DemoReviewSeeder extends Seeder
 {

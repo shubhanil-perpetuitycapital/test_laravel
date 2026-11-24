@@ -17,9 +17,9 @@ class SecurityHeaders
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
-        if ($request->is(config('store.admin_path', 'admin').'*')) {
-            // Keep the back office out of search engines.
+        if ($request->is(trim(config('store.admin_path', 'admin'), '/').'*')) {
             $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+            $response->headers->set('Cache-Control', 'no-store, private');
         }
 
         return $response;

@@ -8,8 +8,9 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Lets only active back-office users (admin / staff) through.
+ * Lets only active back-office users (owner / staff) through.
  * A deactivated account is signed out on its next request.
+ * Use "admin:owner" for screens only the owner may open.
  */
 class EnsureUserIsAdmin
 {

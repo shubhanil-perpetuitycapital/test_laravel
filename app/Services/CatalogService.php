@@ -21,9 +21,6 @@ class CatalogService
         'name' => 'Name: A to Z',
     ];
 
-    /**
-     * @param  array{q?:string,min_price?:numeric,max_price?:numeric,sort?:string,type?:string,in_stock?:bool}  $filters
-     */
     public function paginate(array $filters, ?Category $category = null, int $perPage = 12): LengthAwarePaginator
     {
         $query = $this->baseQuery();
@@ -34,12 +31,10 @@ class CatalogService
 
         if (filled($filters['q'] ?? null)) {
             $term = '%'.addcslashes((string) $filters['q'], '%_\\').'%';
-            $query->where(function (Builder $q) use ($term) {
-                $q->where('name', 'like', $term)
-                    ->orWhere('short_description', 'like', $term)
-                    ->orWhere('ingredients', 'like', $term)
-                    ->orWhere('sku', 'like', $term);
-            });
+            $query->where(fn (Builder $q) => $q->where('name', 'like', $term)
+                ->orWhere('short_description', 'like', $term)
+                ->orWhere('ingredients', 'like', $term)
+                ->orWhere('sku', 'like', $term));
         }
 
         if (filled($filters['min_price'] ?? null)) {
@@ -66,21 +61,13 @@ class CatalogService
         return $query->paginate($perPage)->withQueryString();
     }
 
-    /**
-     * Lowest and highest effective price among active products, for the
-     * price filter placeholders.
-     *
-     * @return array{min:int,max:int}
-     */
+    /** @return array{min:int,max:int} */
     public function priceRange(): array
     {
         $prices = Product::query()->active()->get(['price', 'discount_price'])
             ->map(fn (Product $p) => $p->effective_price);
 
-        return [
-            'min' => (int) floor($prices->min() ?? 0),
-            'max' => (int) ceil($prices->max() ?? 0),
-        ];
+        return ['min' => (int) floor($prices->min() ?? 0), 'max' => (int) ceil($prices->max() ?? 0)];
     }
 
     public function related(Product $product, int $limit = 4): Collection
@@ -93,12 +80,11 @@ class CatalogService
             ->get();
     }
 
-    /** @return Collection<int, Product> */
     public function flagged(string $flag, int $limit = 8): Collection
     {
         return $this->baseQuery()
             ->where($flag, true)
-            ->orderByDesc('stock_quantity')
+            ->orderByRaw('CASE WHEN stock_quantity > 0 THEN 0 ELSE 1 END')
             ->latest('id')
             ->limit($limit)
             ->get();
@@ -106,9 +92,7 @@ class CatalogService
 
     private function baseQuery(): Builder
     {
-        return Product::query()
-            ->active()
-            ->with(['primaryImage', 'category:id,name,slug']);
+        return Product::query()->active()->with(['primaryImage', 'category:id,name,slug']);
     }
 
     private function applySort(Builder $query, string $sort): void
@@ -118,7 +102,6 @@ class CatalogService
             'price_desc' => $query->orderByEffectivePrice('desc'),
             'newest' => $query->latest('id'),
             'name' => $query->orderBy('name'),
-            // Featured first, in-stock before sold-out, then newest.
             default => $query->orderByDesc('is_featured')
                 ->orderByRaw('CASE WHEN stock_quantity > 0 THEN 0 ELSE 1 END')
                 ->latest('id'),

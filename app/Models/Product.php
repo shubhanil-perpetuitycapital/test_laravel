@@ -13,8 +13,10 @@ class Product extends Model
 {
     use SoftDeletes;
 
-    /** Below this many units the storefront says "Only N left". */
+    /** At or below this many units the storefront says "Only N left". */
     public const LOW_STOCK_THRESHOLD = 5;
+
+    private const EFFECTIVE_PRICE_SQL = 'CASE WHEN discount_price IS NOT NULL AND discount_price > 0 AND discount_price < price THEN discount_price ELSE price END';
 
     protected $fillable = [
         'category_id', 'name', 'slug', 'sku', 'short_description', 'description',
@@ -36,8 +38,6 @@ class Product extends Model
         ];
     }
 
-    // ----- Relationships ---------------------------------------------------
-
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
@@ -45,12 +45,12 @@ class Product extends Model
 
     public function images(): HasMany
     {
-        return $this->hasMany(ProductImage::class)->orderByDesc('is_primary')->orderBy('sort_order');
+        return $this->hasMany(ProductImage::class)->orderByDesc('is_primary')->orderBy('sort_order')->orderBy('id');
     }
 
     public function primaryImage(): HasOne
     {
-        return $this->hasOne(ProductImage::class)->orderByDesc('is_primary')->orderBy('sort_order');
+        return $this->hasOne(ProductImage::class)->orderByDesc('is_primary')->orderBy('sort_order')->orderBy('id');
     }
 
     public function reviews(): HasMany
@@ -63,8 +63,7 @@ class Product extends Model
         return $this->hasMany(OrderItem::class);
     }
 
-    // ----- Scopes ----------------------------------------------------------
-
+    /** Visible on the storefront: product and its category both active. */
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true)
@@ -76,29 +75,23 @@ class Product extends Model
         return $query->where('stock_quantity', '>', 0);
     }
 
-    /**
-     * Price the customer actually pays, usable in SQL for filters/sorting.
-     */
     public function scopeOrderByEffectivePrice(Builder $query, string $direction = 'asc'): Builder
     {
-        $direction = $direction === 'desc' ? 'desc' : 'asc';
-
-        return $query->orderByRaw(
-            'CASE WHEN discount_price IS NOT NULL AND discount_price > 0 AND discount_price < price THEN discount_price ELSE price END '.$direction
-        );
+        return $query->orderByRaw(self::EFFECTIVE_PRICE_SQL.' '.($direction === 'desc' ? 'desc' : 'asc'));
     }
 
     public function scopeWhereEffectivePrice(Builder $query, string $operator, float $value): Builder
     {
         $operator = in_array($operator, ['>=', '<=', '>', '<', '='], true) ? $operator : '>=';
 
-        return $query->whereRaw(
-            '(CASE WHEN discount_price IS NOT NULL AND discount_price > 0 AND discount_price < price THEN discount_price ELSE price END) '.$operator.' CAST(? AS DECIMAL(10,2))',
-            [$value]
-        );
+        // CAST keeps SQLite from comparing the bound value as text.
+        return $query->whereRaw('('.self::EFFECTIVE_PRICE_SQL.') '.$operator.' CAST(? AS DECIMAL(10,2))', [$value]);
     }
 
-    // ----- Accessors -------------------------------------------------------
+    public function isPurchasable(): bool
+    {
+        return $this->is_active && $this->stock_quantity > 0 && (bool) $this->category?->is_active;
+    }
 
     public function getHasDiscountAttribute(): bool
     {
@@ -114,11 +107,9 @@ class Product extends Model
 
     public function getDiscountPercentAttribute(): int
     {
-        if (! $this->has_discount) {
-            return 0;
-        }
-
-        return (int) round((1 - ((float) $this->discount_price / (float) $this->price)) * 100);
+        return $this->has_discount
+            ? (int) round((1 - ((float) $this->discount_price / (float) $this->price)) * 100)
+            : 0;
     }
 
     public function getInStockAttribute(): bool

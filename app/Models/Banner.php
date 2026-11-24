@@ -19,16 +19,16 @@ class Banner extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query->where('is_active', true)->orderBy('sort_order');
+        return $query->where('is_active', true)->orderBy('sort_order')->orderBy('id');
     }
 
-    public function getImageUrlAttribute(): ?string
+    public function getImageUrlAttribute(): string
     {
-        return media_url($this->image, null);
+        return media_url($this->image, 'images/placeholders/hero.svg');
     }
 
     public function getMobileImageUrlAttribute(): ?string
     {
-        return media_url($this->mobile_image, null) ?? $this->image_url;
+        return $this->mobile_image ? media_url($this->mobile_image) : null;
     }
 }

@@ -34,7 +34,7 @@ return new class extends Migration
             $table->longText('description')->nullable();
             $table->text('ingredients')->nullable();
             $table->text('allergens')->nullable();
-            $table->string('weight', 60)->nullable();          // e.g. "100 g", "Box of 9"
+            $table->string('weight', 60)->nullable();
             $table->decimal('price', 10, 2);
             $table->decimal('discount_price', 10, 2)->nullable();
             $table->unsignedInteger('stock_quantity')->default(0);

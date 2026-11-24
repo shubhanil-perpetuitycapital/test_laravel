@@ -25,6 +25,6 @@ class DeliveryZone extends Model
 
     public function pincodes(): HasMany
     {
-        return $this->hasMany(DeliveryPincode::class);
+        return $this->hasMany(DeliveryPincode::class)->orderBy('pincode');
     }
 }

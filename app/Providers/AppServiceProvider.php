@@ -3,7 +3,12 @@
 namespace App\Providers;
 
 use App\Models\Category;
+use App\Models\CustomOrderEnquiry;
+use App\Models\Order;
+use App\Models\Review;
+use App\Services\CartService;
 use App\Services\CompanyProfile;
+use App\Services\ImageService;
 use App\Services\SettingService;
 use App\Services\WhatsAppService;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -20,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(ImageService::class);
         $this->app->singleton(SettingService::class);
         $this->app->singleton(CompanyProfile::class);
         $this->app->singleton(WhatsAppService::class);
@@ -34,39 +40,44 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureRateLimiting();
 
-        if (app()->environment('production')) {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
-        }
-
         // Company identity and WhatsApp helper available in every view.
         View::composer('*', function ($view) {
             $view->with('company', app(CompanyProfile::class));
             $view->with('whatsapp', app(WhatsAppService::class));
         });
 
-        // Category list for storefront navigation, cached for 10 minutes.
+        // Storefront navigation: categories (cached) and cart count.
         View::composer(['layouts.app', 'partials.*'], function ($view) {
             try {
-                $categories = Cache::remember('nav_categories', 600, fn() => Category::query()
+                $categories = Cache::remember('nav_categories', 600, fn () => Category::query()
                     ->active()->ordered()->get(['id', 'name', 'slug']));
             } catch (Throwable) {
                 $categories = collect();
             }
             $view->with('navCategories', $categories);
+            $view->with('cartCount', app(CartService::class)->count());
+        });
+
+        // Badges in the admin sidebar.
+        View::composer('admin.layouts.app', function ($view) {
+            $view->with('adminBadges', [
+                'orders' => Order::query()->where('status', 'pending')->count(),
+                'payments' => Order::query()->where('payment_status', 'submitted')->count(),
+                'enquiries' => CustomOrderEnquiry::query()->where('status', 'new')->count(),
+                'reviews' => Review::query()->where('is_approved', false)->count(),
+            ]);
         });
     }
 
     private function configureRateLimiting(): void
     {
-        // Public forms (custom order, contact, order tracking, checkout).
-        RateLimiter::for('public-forms', function (Request $request) {
-            return [
-                Limit::perMinute(5)->by($request->ip()),
-                Limit::perHour(30)->by($request->ip()),
-            ];
-        });
+        // Public forms: checkout, custom order, payment reference, tracking, reviews.
+        RateLimiter::for('public-forms', fn (Request $request) => [
+            Limit::perMinute(6)->by($request->ip()),
+            Limit::perHour(40)->by($request->ip()),
+        ]);
 
-        // Storefront AJAX endpoints (filters, search).
-        RateLimiter::for('storefront-ajax', fn(Request $request) => Limit::perMinute(90)->by($request->ip()));
+        // Storefront AJAX endpoints (filters, cart, delivery check).
+        RateLimiter::for('storefront-ajax', fn (Request $request) => Limit::perMinute(120)->by($request->ip()));
     }
 }

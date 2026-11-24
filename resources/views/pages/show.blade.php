@@ -15,7 +15,7 @@
     </section>
 
     <div class="container">
-        {{-- Content is written by the store owner in the admin panel (trusted HTML). --}}
+        {{-- Content is sanitised when saved in the admin (App\Services\HtmlSanitizer). --}}
         <article class="prose">
             {!! $page->content !!}
         </article>

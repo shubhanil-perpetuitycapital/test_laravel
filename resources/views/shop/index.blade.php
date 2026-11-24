@@ -31,11 +31,11 @@
                 <a href="{{ route('shop.index', $cat->slug) }}" @class(['chip', 'is-active' => $category?->is($cat)])>{{ $cat->name }}</a>
             @endforeach
             <a href="{{ route('shop.index', ['type' => 'gift']) }}" @class(['chip', 'is-active' => ($filters['type'] ?? null) === 'gift'])>Gift boxes</a>
+            <a href="{{ route('shop.index', ['type' => 'bestseller']) }}" @class(['chip', 'is-active' => ($filters['type'] ?? null) === 'bestseller'])>Bestsellers</a>
         </div>
     </div>
 
     <div class="container shop-layout">
-        {{-- Desktop sidebar / mobile off-canvas filters (same markup) --}}
         <aside class="offcanvas-lg offcanvas-start shop-filters" tabindex="-1" id="shopFilters" aria-labelledby="shopFiltersLabel">
             <div class="offcanvas-header">
                 <h2 class="offcanvas-title h5" id="shopFiltersLabel">Filter</h2>

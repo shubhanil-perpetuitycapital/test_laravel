@@ -18,4 +18,25 @@ enum PaymentStatus: string
             self::Refunded => 'Refunded',
         };
     }
+
+    public function badgeClass(): string
+    {
+        return match ($this) {
+            self::Unpaid => 'text-bg-light border',
+            self::Submitted => 'text-bg-warning',
+            self::Paid => 'text-bg-success',
+            self::Refunded => 'text-bg-secondary',
+        };
+    }
+
+    /** @return array<string,string> */
+    public static function options(): array
+    {
+        $out = [];
+        foreach (self::cases() as $case) {
+            $out[$case->value] = $case->label();
+        }
+
+        return $out;
+    }
 }

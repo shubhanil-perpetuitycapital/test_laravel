@@ -5,9 +5,9 @@
 | Store bootstrap configuration
 |--------------------------------------------------------------------------
 |
-| Values here are only first-run defaults read from .env. Once the site is
-| live the owner manages company details from Admin → Company setup, which
-| stores them in the `settings` table and overrides these.
+| Values here are first-run defaults read from .env. Once the site is live
+| the owner manages company details from Admin → Company setup and Store
+| settings, which are stored in the `settings` table and override these.
 |
 */
 
@@ -28,4 +28,8 @@ return [
     'admin_path' => env('ADMIN_PATH', 'admin'),
 
     'products_per_page' => (int) env('PRODUCTS_PER_PAGE', 12),
+    'admin_per_page' => (int) env('ADMIN_PER_PAGE', 20),
+
+    // Largest quantity of one product in a single cart line.
+    'max_line_quantity' => 50,
 ];

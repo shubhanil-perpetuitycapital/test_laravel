@@ -33,4 +33,22 @@ class Coupon extends Model
     {
         return $this->hasMany(Order::class);
     }
+
+    public function setCodeAttribute(?string $value): void
+    {
+        $this->attributes['code'] = strtoupper(trim((string) $value));
+    }
+
+    public function getSummaryAttribute(): string
+    {
+        $value = $this->type === 'percent'
+            ? rtrim(rtrim(number_format((float) $this->value, 2), '0'), '.').'% off'
+            : money($this->value).' off';
+
+        if ($this->min_order_amount) {
+            $value .= ' on orders over '.money($this->min_order_amount);
+        }
+
+        return $value;
+    }
 }

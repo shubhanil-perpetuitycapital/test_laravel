@@ -23,10 +23,7 @@ class HomeController extends Controller
 
         $bestsellers = $catalog->flagged('is_bestseller', 8);
         $giftBoxes = $catalog->flagged('is_gift_box', 4);
-
-        $reviews = Review::query()->approved()->where('is_featured', true)
-            ->latest()->limit(6)->get();
-
+        $reviews = Review::query()->approved()->where('is_featured', true)->latest()->limit(6)->get();
         $gallery = GalleryItem::query()->active()->limit(8)->get();
 
         $seo = new SeoData(
@@ -44,7 +41,7 @@ class HomeController extends Controller
                 'address' => [
                     '@type' => 'PostalAddress',
                     'addressLocality' => $company->city(),
-                    'addressRegion' => setting('state'),
+                    'addressRegion' => $company->state(),
                     'addressCountry' => 'IN',
                 ],
                 'sameAs' => array_column($company->socialLinks(), 'url'),

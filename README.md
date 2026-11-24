@@ -1,65 +1,107 @@
 # Handmade Chocolate Store — Laravel 12
 
 E-commerce website and order management system for a handmade chocolate business in Kolkata.
-Laravel 12 · PHP 8.2 · MySQL 8 · Blade · Bootstrap 5.3 · vanilla JavaScript. No Node build step.
+Laravel 12 · PHP 8.2 · MySQL 8 · Blade · Bootstrap 5.3 · vanilla JavaScript · Chart.js. No Node build step.
 
-**Status: Phase 1 of 5 complete** (foundation, database, admin sign-in, company setup, storefront catalogue).
-See [Phase plan](#phase-plan) for what comes next.
+**Status:** storefront, checkout, orders and the full admin panel are built and tested (55 automated tests).
+Covers phases 1–4 of the brief; see [What's included](#whats-included) and [Remaining before launch](#remaining-before-launch).
 
 ---
 
 ## Contents
 
-1. [Architecture](#architecture)
-2. [Database design](#database-design)
-3. [Folder structure](#folder-structure)
-4. [Company setup](#company-setup)
-5. [Local installation](#local-installation)
-6. [Deploying to Hostinger](#deploying-to-hostinger)
-7. [Admin login](#admin-login)
-8. [Testing](#testing)
-9. [Phase plan](#phase-plan)
+1. [What's included](#whats-included)
+2. [Architecture](#architecture)
+3. [Database design](#database-design)
+4. [Folder structure](#folder-structure)
+5. [How ordering works](#how-ordering-works)
+6. [Local installation](#local-installation)
+7. [Deploying to Hostinger](#deploying-to-hostinger)
+8. [Admin login and roles](#admin-login-and-roles)
+9. [Testing](#testing)
+10. [Remaining before launch](#remaining-before-launch)
+
+---
+
+## What's included
+
+### Storefront (customers)
+
+| Page | URL | What it does |
+|---|---|---|
+| Homepage | `/` | Banner slider, introduction, categories, bestsellers, gift boxes, custom-order panel, promises, reviews, Instagram grid, WhatsApp band — all managed from the admin |
+| Shop | `/shop`, `/shop/{category}` | Search, category, price range, in-stock filter, sorting, pagination; filters update live without reloading (fetch) |
+| Product | `/product/{slug}` | Photo carousel, price/sale, stock, ingredients, allergens, quantity, **Add to cart**, **Buy now**, WhatsApp enquiry, customer reviews + review form |
+| Cart | `/cart` | Change quantities, remove, discount code, PIN-code delivery check with live totals |
+| Checkout | `/checkout` | Contact, address, Kolkata local vs outside Kolkata, live delivery charge/date, UPI or cash on delivery |
+| Order confirmation | `/order/{no}/thank-you` (signed link) | "Send order on WhatsApp" button, UPI ID + QR + "Pay with UPI app" link, payment reference and screenshot upload |
+| Track order | `/track-order` | Order number + mobile → status timeline, courier and tracking number, updates |
+| Custom orders | `/custom-orders` | Enquiry form with occasion, type, quantity, budget, date, PIN, message, reference image |
+| Pages | `/page/about-us`, `faq`, policies | Editable in admin |
+| Contact | `/contact` | WhatsApp, call, email, address, hours, social links |
+| SEO | `/sitemap.xml`, `/robots.txt` | Generated automatically |
+
+Phones get an app-style bottom bar (Home, Shop, Custom, Cart with badge, WhatsApp), a sticky "Add to cart" bar on product pages, toasts when items are added, and no sideways scrolling on any page.
+
+### Admin panel (`/admin`)
+
+| Module | Features |
+|---|---|
+| **Dashboard** | Revenue this month, today's / pending / completed / total orders, payments to verify, customers, products, out-of-stock; 12-month orders & revenue chart; needs-attention list; low stock; recent orders; setup checklist |
+| **Orders** | Status tabs with counts, search (number / name / mobile), payment and date filters, CSV export; order page with items, customer, address; update status with note (shown to customer or internal); payment status + reference + screenshot; confirm courier charge; courier, tracking number/link, delivery date; internal notes; WhatsApp confirmation/status messages; history; printable invoice (GSTIN/FSSAI) |
+| **Custom enquiries** | List with status and deadline warnings; details and reference image; status, quote, quote notes, internal notes; WhatsApp reply including the quote; **convert to order** |
+| **Customers** | Search and sort by spend/orders; order history, total and average spend, enquiries; editable notes |
+| **Products** | Search and filters; create/edit with category, SKU, slug, price, sale price, weight, description, ingredients, allergens, stock, featured/bestseller/gift/visible flags, SEO; multiple photos with main photo, order, description and removal |
+| **Categories** | Name, slug, description, image, order, visibility, SEO; can't delete while it has products |
+| **Coupons** *(owner)* | Percent or fixed, minimum order, cap, usage limit, start/end dates |
+| **Reviews** | Approve, feature on homepage, add, edit, delete |
+| **Homepage banners** | Headline, text, button, desktop + phone image, order; several become a slider |
+| **Instagram gallery** | Upload photos linked to posts |
+| **Pages** | Edit About/FAQ/policies (HTML is sanitised on save); add new pages |
+| **Company setup** *(owner)* | Brand name, tagline, intro, logos, favicon, phones, WhatsApp, email, hours, address (with hide switch), GSTIN, FSSAI, social links, SEO, Analytics |
+| **Store settings** *(owner)* | UPI on/off, UPI ID, payee name, QR code, instructions; COD on/off, Kolkata-only, limit; minimum order; local/same-day switches, Sunday closure, free-delivery amount; courier on/off, flat charge or "confirm later", free courier amount, estimate text; three WhatsApp message templates |
+| **Delivery areas** *(owner)* | Zones with charge, free-delivery amount, same-day + cut-off time, lead days, customer note, and PIN codes pasted as a list |
+| **Staff accounts** *(owner)* | Add owners or staff, disable, reset password |
+| **My account** | Name, email, password |
 
 ---
 
 ## Architecture
 
-Classic Laravel MVC, server-rendered with Blade, kept deliberately simple so it runs on shared hosting.
+Classic Laravel MVC, server-rendered with Blade, kept simple so it runs on shared hosting.
 
 ```
-Browser ──► routes/web.php ──► Controller ──► Service ──► Eloquent model ──► MySQL
-              routes/admin.php      │             │
-                                    ▼             ▼
-                              Form Request    SettingService (cached)
-                              (validation)    CompanyProfile / WhatsAppService
-                                    │
-                                    ▼
-                              Blade view + components ──► HTML (+ JSON fragments for fetch())
+Browser ──► routes/web.php / routes/admin.php ──► Controller ──► Service ──► Eloquent ──► MySQL
+                                                      │              │
+                                               Form Request    CartService, OrderService,
+                                               (validation)    DeliveryService, CouponService,
+                                                               SettingService, WhatsAppService …
+                                                      ▼
+                                          Blade views + components ──► HTML (+ JSON for fetch())
 ```
 
 | Layer | Responsibility |
 |---|---|
-| **Controllers** (`app/Http/Controllers`) | Thin: read the request, call a service, return a view. Storefront and `Admin/` are separate namespaces. |
-| **Form Requests** (`app/Http/Requests`) | All validation and input normalisation (GSTIN upper-casing, FSSAI digits, filter sanitising). |
-| **Services** (`app/Services`) | Business logic: `CatalogService` (filtering/sorting), `SettingService` (cached settings), `CompanyProfile` (formatted company identity for views), `WhatsAppService` (encoded click-to-chat links). |
-| **SettingsSchema** (`app/Support`) | One definition per setting: label, input type, validation rules, default. The admin form, validation and defaults are all generated from it. |
-| **Models** (`app/Models`) | Relationships, casts, query scopes and display accessors (effective price, stock status, image URLs). |
-| **Views** (`resources/views`) | Blade layouts, partials and anonymous components. No queries or business rules inside templates. |
-| **Assets** (`public/assets`) | Hand-written CSS and JS; Bootstrap 5.3 and Bootstrap Icons from jsDelivr. |
+| **Controllers** | Thin: read the request, call a service, return a view or redirect. Storefront and `Admin/` are separate. |
+| **Form Requests** | All validation and input clean-up (mobile numbers → 10 digits, GSTIN upper-cased, PIN lists parsed). |
+| **Services** | `CartService` (session cart, always fresh prices), `OrderService` (transactional order placement, status changes, stock), `DeliveryService` (PIN lookup, charge, same-day cut-off in IST), `CouponService`, `CatalogService` (shop queries), `SettingService` (cached settings), `CompanyProfile`, `WhatsAppService` (encoded click-to-chat links + templates), `ImageService` (resize/strip EXIF), `HtmlSanitizer`. |
+| **SettingsSchema** | One definition per setting (label, input type, validation, default). Both settings screens, their validation and defaults are generated from it. |
+| **Models** | Relationships, casts (enums for order/payment status), scopes and display helpers. |
+| **Views** | Layouts, partials and anonymous components (`x-product-card`, `x-admin.input` …). No queries in templates. |
 
-**Authentication.** One `web` guard. Only back-office users (role `admin` = owner, `staff`) can sign in; shoppers check out as guests and are stored in `customers`, so a customer can never reach the admin area. The `admin` middleware also signs out deactivated accounts, and `admin:owner` restricts owner-only screens such as Company setup.
+**WhatsApp** — all messages use click-to-chat links (`https://wa.me/<number>?text=…`, properly URL-encoded). They open WhatsApp with the text filled in and a person presses Send. Nothing is sent automatically; that would need the official WhatsApp Business API, which is not used.
 
-**Why no separate `admins` table:** customers don't log in, so a second guard would add complexity with no benefit.
+**Payments** — no payment gateway. UPI is paid to the owner's account; the customer submits the UTR reference (and optional screenshot) and the owner marks it paid after checking.
 
-**Hosting choices.** File sessions and cache, synchronous queue, uploads written straight to `public/uploads` (no `storage:link` symlink, which some shared hosts block), Indian-rupee formatting without the `intl` extension, and `Asia/Kolkata` as the app timezone so delivery cut-offs are in IST.
+**Hosting choices** — file sessions and cache, synchronous queue, public uploads written straight to `public/uploads` (no `storage:link` symlink), private uploads (payment screenshots, enquiry images) in `storage/app/private` and only viewable by signed-in staff, rupee formatting without the `intl` extension, `Asia/Kolkata` timezone.
 
-**Security.** CSRF on every form, server-side validation, Eloquent bindings only, Blade auto-escaping, bcrypt passwords, login throttling (5 failures → 5-minute lockout per email + IP), named rate limiters for public forms and AJAX, image-only uploads (JPG/PNG/WebP, size-limited; SVG rejected), security headers, `noindex` on the admin, credentials only in `.env`.
+**Security** — CSRF on every form; server-side validation everywhere; Eloquent bindings only; Blade escaping; sanitised page HTML; bcrypt passwords; login lockout (5 failures → 5 minutes); rate limits on checkout, payment, tracking, custom-order and review forms; honeypot fields; signed order-confirmation links; tracking needs order number **and** mobile; image-only uploads (JPG/PNG/WebP, size limits, SVG rejected); owner-only screens; security headers; `noindex` on admin and private pages; credentials only in `.env`.
 
 ---
 
 ## Database design
 
-17 tables. All prices are `DECIMAL(10,2)`. Foreign keys and indexes on every lookup column.
+17 tables, `DECIMAL(10,2)` money, foreign keys and indexes, soft deletes on catalogue, customers, orders, coupons and enquiries.
 
 ```mermaid
 erDiagram
@@ -78,27 +120,19 @@ erDiagram
     orders ||--o| custom_order_enquiries : "converted from"
 ```
 
-| Table | Purpose | Notes |
-|---|---|---|
-| `users` | Owner and staff accounts | `role`, `is_active`, `last_login_at` |
-| `settings` | Every admin-editable setting (company, contact, address, legal, social, SEO, later WhatsApp/UPI/delivery) | key/value with `group`; cached |
-| `categories` | Product categories | slug, display order, active flag, SEO fields, soft deletes |
-| `products` | Catalogue | SKU, price + discount price, weight, ingredients, allergens, stock, featured/bestseller/gift flags, soft deletes |
-| `product_images` | Multiple photos per product | sort order, primary flag |
-| `customers` | One row per shopper, keyed by mobile number | avoids duplicating identity on every order |
-| `orders` | Orders | status, payment method/status/UPI reference, delivery address **snapshot**, totals, courier and tracking |
-| `order_items` | Lines of an order | **snapshots** of name, SKU, weight and unit price so old orders never change |
-| `order_status_histories` | Audit trail of status changes | who changed it and when |
-| `custom_order_enquiries` | Personalised order requests | quote, notes, link to the order it became |
-| `delivery_zones` | Kolkata areas | charge, free-delivery threshold, same-day flag and cut-off, lead days |
-| `delivery_pincodes` | Serviceable PIN codes per zone | unique PIN |
-| `coupons` | Discount codes | fixed/percent, minimum order, cap, usage limit, validity window |
-| `reviews` | Customer reviews | approval and homepage-feature flags |
-| `banners` | Homepage hero slides | separate mobile image |
-| `pages` | About, FAQ and policy pages | editable HTML |
-| `gallery_items` | Homepage Instagram-style grid | image + link, no API token needed |
-
-The order address is stored on the order on purpose: it records where *that* order went, even if the customer later moves. Identity (name, mobile, email) lives once in `customers`.
+| Table | Purpose |
+|---|---|
+| `users` | Owner and staff accounts (`role`, `is_active`, `last_login_at`) |
+| `settings` | Every admin-editable setting, key/value, cached |
+| `categories`, `products`, `product_images` | Catalogue |
+| `customers` | One row per shopper, keyed by mobile — identity is not duplicated on orders |
+| `orders` | Status, payment method/status/reference/screenshot, delivery address **snapshot**, totals, coupon, courier/tracking, source (website / enquiry) |
+| `order_items` | **Snapshots** of name, SKU, weight and unit price, so old orders never change when products do |
+| `order_status_histories` | Audit trail: who changed what, with notes visible to the customer or internal |
+| `custom_order_enquiries` | Custom requests, quote and the order they became |
+| `delivery_zones`, `delivery_pincodes` | Kolkata areas and serviceable PIN codes |
+| `coupons` | Discount codes and usage counts |
+| `reviews`, `banners`, `pages`, `gallery_items` | Content |
 
 ---
 
@@ -106,54 +140,44 @@ The order address is stored on the order on purpose: it records where *that* ord
 
 ```
 app/
-  Enums/                 OrderStatus, PaymentStatus
-  Http/
-    Controllers/         Home, Shop, Product, Page, Contact, Seo
-      Admin/             Dashboard, CompanySettings, Profile, Auth/Login
-    Middleware/          EnsureUserIsAdmin, SecurityHeaders
-    Requests/            ShopFilterRequest, Admin/{Login,UpdateCompanySettings,UpdateProfile}Request
-  Models/                17 Eloquent models
-  Services/              CatalogService, SettingService, CompanyProfile, WhatsAppService, SeoData
-  Support/               SettingsSchema, helpers.php (setting(), media_url(), money())
-config/store.php         first-run brand defaults, admin account, admin URL prefix
-database/
-  migrations/            users + 5 domain migrations
-  seeders/               admin, settings, catalogue (3 categories, 15 products), pages, delivery zones, homepage
-public/
-  assets/css|js/         store.css, store.js, admin.css, admin.js
-  images/placeholders/   SVG product and section illustrations used by the seeders
-  uploads/               owner-uploaded images (logo, products…)
-resources/views/
-  layouts/app            storefront shell
-  partials/              header, footer, mobile bottom nav, WhatsApp button, SEO tags
-  components/            brand-logo, product-card, price, section-head
-  home, shop/, products/, pages/, seo/, errors/
-  admin/                 layouts/app, auth/login, dashboard, company/, profile/
-routes/web.php           storefront
-routes/admin.php         back office (prefix from ADMIN_PATH)
-tests/                   Feature: storefront, admin auth, company setup · Unit: helpers
+  Enums/                    OrderStatus, PaymentStatus
+  Http/Controllers/         Home, Shop, Product, Review, Cart, Checkout, OrderConfirmation,
+                            OrderTracking, CustomOrder, Page, Contact, Seo
+  Http/Controllers/Admin/   Dashboard, Order, Enquiry, Customer, Product, Category, Coupon,
+                            DeliveryZone, Review, Banner, Gallery, Page, Settings, User, Profile, Auth/Login
+  Http/Middleware/          EnsureUserIsAdmin (admin, admin:owner), SecurityHeaders
+  Http/Requests/            Checkout, CustomOrder, PaymentSubmission, TrackOrder, Review, ShopFilter
+  Http/Requests/Admin/      Product, Category, Coupon, DeliveryZone, Enquiry, OrderUpdate, Content,
+                            UpdateSettings, User, UpdateProfile, Login
+  Models/                   17 models
+  Services/                 Cart, Order, Delivery (+ DeliveryQuote), Coupon, Catalog, Setting,
+                            CompanyProfile, WhatsApp, Image, HtmlSanitizer, SeoData
+  Support/                  SettingsSchema, Slug, helpers.php (setting(), media_url(), money())
+config/store.php            first-run brand values, admin account, admin URL prefix, page sizes
+database/migrations/        6 migrations
+database/seeders/           admin, settings, 3 categories + 15 products, pages, delivery areas,
+                            banner + gallery, example coupon, demo reviews (local only)
+public/assets/              store.css, store.js, admin.css, admin.js
+public/images/placeholders/ SVG product illustrations used by the seeders
+public/uploads/             owner-uploaded images
+resources/views/            layouts, partials, components, home, shop, products, cart, checkout,
+                            orders, track, custom-orders, pages, errors, admin/*
+routes/web.php, admin.php
+tests/Feature, tests/Unit   55 tests
 ```
 
 ---
 
-## Company setup
+## How ordering works
 
-**Admin → Company setup** holds everything that identifies the business. Each tab saves together and appears on the website immediately.
+1. Customer adds products (cart stores only product IDs and quantities in the session; prices and stock are always read fresh).
+2. In the cart or at checkout they enter a PIN code. **Kolkata**: the PIN must be in an active delivery area; charge comes from the area (free above its threshold); same day if the store and area allow it and it's before the area's cut-off in IST, otherwise the next available day (optionally skipping Sundays). **Outside Kolkata**: flat courier charge from settings, or "to be confirmed"; only an estimate is shown, never a guaranteed date.
+3. Payment options adapt: UPI if enabled; COD if enabled, within the limit and (by default) only for Kolkata.
+4. **Place order** runs in one database transaction: products are locked, stock is checked and reduced, the coupon is re-checked and counted, the customer is found or created by mobile, the order and item snapshots are saved, and a history entry is written. Two people can't buy the last box at once.
+5. The customer lands on a private signed confirmation page with the WhatsApp "send order" button and UPI details, and can submit the payment reference.
+6. The owner sees it on the dashboard, verifies payment, updates status (cancelling returns stock), adds courier details and sends WhatsApp updates from templates. The customer follows progress on the tracking page.
 
-| Tab | Fields | Where it shows |
-|---|---|---|
-| **Brand** | Brand name, tagline, short introduction, year started, logo for light backgrounds, logo for dark backgrounds, favicon | Header, footer, hero, admin, browser tab, WhatsApp messages, product schema |
-| **Contact** | Primary and alternate phone, WhatsApp number, email, default WhatsApp greeting, business hours | Header call button, footer, contact page, every WhatsApp button |
-| **Address** | Address lines, landmark, city, state, PIN, country, Google Maps link, *show full address publicly* switch | Footer, contact page, invoices (Phase 3). Hide it if you work from home — the site then shows only city and state. |
-| **Legal & tax** | Registered business name, GSTIN (validated format), FSSAI licence number (14 digits), *show FSSAI in footer* switch | Footer, copyright line, invoices |
-| **Social links** | Instagram (+ handle), Facebook, YouTube, X, Pinterest, LinkedIn, Google reviews page | Footer and contact-page icons (only filled ones show), homepage photo-grid heading |
-| **SEO** | Homepage title and description, link-preview image, Google Search Console code, Google Analytics ID | `<head>` meta, Open Graph tags, analytics script |
-
-A live footer preview updates as you type, the page warns before you leave with unsaved changes, and the dashboard shows a setup checklist until the essentials (name, logo, WhatsApp, address, FSSAI, Instagram) are filled in.
-
-To add a setting later, add one entry to `app/Support/SettingsSchema.php`; the form, validation and `setting('key')` helper pick it up.
-
-> FSSAI: food businesses selling online in India are required to display their FSSAI licence or registration number. Enter it before going live.
+Custom enquiries follow their own path: form → admin quote → WhatsApp → **Convert to order**.
 
 ---
 
@@ -162,125 +186,107 @@ To add a setting later, add one entry to `app/Support/SettingsSchema.php`; the f
 Requirements: PHP 8.2+ with `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `gd`; Composer 2; MySQL 8.
 
 ```bash
-# 1. Install dependencies (composer.json pins the platform to PHP 8.2,
-#    so the lock file stays installable on PHP 8.2 hosting)
-composer install
-
-# 2. Environment
+composer install                     # platform pinned to PHP 8.2 in composer.json
 cp .env.example .env
 php artisan key:generate
 
-# 3. Database: create an empty MySQL database, then set DB_* in .env
 mysql -u root -p -e "CREATE DATABASE chocolate_store CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+# set DB_* and ADMIN_EMAIL / ADMIN_PASSWORD in .env
 
-# 4. Set ADMIN_EMAIL and ADMIN_PASSWORD in .env, then create tables and sample data
 php artisan migrate --seed
-
-# 5. Run
-php artisan serve        # http://localhost:8000  ·  admin: http://localhost:8000/admin/login
+php artisan serve                    # http://localhost:8000 · admin: /admin/login
 ```
 
-Seeders are safe to re-run: they never duplicate rows or overwrite company settings you have edited.
-Without `ADMIN_PASSWORD` (local only) a random password is generated and printed once.
+Seeders are safe to re-run. Without `ADMIN_PASSWORD` (local only) a random password is printed once.
 
-**Sample data** (`database/seeders`): 3 categories, 15 products with prices, descriptions, ingredients and allergens, 6 information pages, 3 Kolkata delivery zones with PIN codes, a hero banner and gallery tiles. Product photos are SVG placeholders in `public/images/placeholders/` — replace them with real photography (product management arrives in Phase 3). Four clearly-labelled demo reviews are seeded **only outside production**.
+**Sample data:** 3 categories, 15 products (one sold out, one low stock), 6 pages, 3 Kolkata delivery areas with 30 PIN codes, a banner, 8 gallery tiles, an inactive `WELCOME10` coupon, and 4 clearly-labelled demo reviews (skipped in production). Product images are SVG placeholders — replace them in Admin → Products.
 
 ---
 
 ## Deploying to Hostinger
 
-Works on Hostinger Premium/Business shared hosting (hPanel) with SSH.
+Works on Hostinger Premium/Business shared hosting with SSH.
 
-1. **hPanel → Advanced → PHP Configuration:** select PHP 8.2 (or newer). Enable `fileinfo`, `gd`, `pdo_mysql`.
-2. **hPanel → Databases → MySQL:** create a database and user; note the names (Hostinger prefixes them, e.g. `u123456789_choco`).
-3. **Upload the code** *outside* `public_html`, e.g. `~/chocolate-store` (Git: hPanel → Advanced → Git, or upload a zip with File Manager and extract).
-4. **SSH in** (hPanel → Advanced → SSH Access) and run:
+1. **hPanel → Advanced → PHP Configuration:** PHP 8.2 or newer; enable `fileinfo`, `gd`, `pdo_mysql`.
+2. **hPanel → Databases → MySQL:** create a database and user.
+3. **Upload the code outside `public_html`**, e.g. `~/chocolate-store` (Git or File Manager zip upload).
+4. **SSH:**
    ```bash
    cd ~/chocolate-store
    composer install --no-dev --optimize-autoloader
    cp .env.example .env
-   nano .env        # APP_ENV=production, APP_DEBUG=false, APP_URL=https://yourdomain.com,
-                    # DB_* from step 2, ADMIN_EMAIL / ADMIN_PASSWORD, SESSION_SECURE_COOKIE=true
+   nano .env   # APP_ENV=production, APP_DEBUG=false, APP_URL=https://yourdomain.com,
+               # DB_*, ADMIN_EMAIL, ADMIN_PASSWORD, SESSION_SECURE_COOKIE=true
    php artisan key:generate
    php artisan migrate --seed --force
    ```
-5. **Point the domain at `public/`.** Either replace `public_html` with a symlink:
+5. **Point the domain at `public/`:**
    ```bash
    mv ~/domains/yourdomain.com/public_html ~/domains/yourdomain.com/public_html_old
    ln -s ~/chocolate-store/public ~/domains/yourdomain.com/public_html
    ```
-   or, if symlinks are not allowed, copy the contents of `public/` into `public_html` and edit the two paths in `public_html/index.php` to `__DIR__.'/../../chocolate-store/vendor/autoload.php'` and `.../bootstrap/app.php` (adjust to your folder). Uploads then live in `public_html/uploads`; set `'root' => base_path('../public_html/uploads')` for the `uploads` disk in `config/filesystems.php`.
-6. **Permissions:** `chmod -R 775 storage bootstrap/cache public/uploads`
-7. **Cache for speed:**
-   ```bash
-   php artisan config:cache && php artisan route:cache && php artisan view:cache
-   ```
-   Re-run these after every `.env` or code change (`php artisan optimize:clear` first).
-8. **SSL:** hPanel → Security → SSL → install the free certificate and force HTTPS.
-9. Sign in at `https://yourdomain.com/admin/login`, open **Company setup**, and replace every placeholder.
+   If symlinks aren't allowed, copy the contents of `public/` into `public_html`, change the two paths in `public_html/index.php` to point at `~/chocolate-store/vendor/autoload.php` and `~/chocolate-store/bootstrap/app.php`, and set `UPLOADS_PATH` in `.env` to the full path of `public_html/uploads`.
+6. `chmod -R 775 storage bootstrap/cache public/uploads`
+7. `php artisan config:cache && php artisan route:cache && php artisan view:cache` (run `php artisan optimize:clear` first after any later change).
+8. **hPanel → Security → SSL:** install the free certificate and force HTTPS.
+9. Sign in, then fill in **Company setup**, **Store settings** (UPI ID!) and **Delivery areas**, and replace sample products and photos.
 
-No cron job or queue worker is needed for Phase 1.
+No cron job or queue worker is needed.
 
 ---
 
-## Admin login
+## Admin login and roles
 
 | | |
 |---|---|
-| URL | `/admin/login` (change the prefix with `ADMIN_PATH` in `.env`) |
-| Email / password | `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env` at the time you seeded |
-| Change them | Admin → **My account** (current password required) |
-| Locked out | After 5 wrong passwords, wait 5 minutes |
-| Reset forgotten password | `php artisan tinker --execute="App\Models\User::where('email','you@example.com')->first()->update(['password'=>'NewStrongPass123'])"` |
+| URL | `/admin/login` (change the prefix with `ADMIN_PATH`) |
+| First account | `ADMIN_EMAIL` / `ADMIN_PASSWORD` from `.env` when you seeded |
+| Owner | Everything |
+| Staff | Orders, enquiries, customers, products, categories, reviews, banners, gallery, pages — not settings, coupons, delivery areas or accounts |
+| Locked out | Wait 5 minutes after 5 wrong passwords |
+| Forgotten password | `php artisan tinker --execute="App\Models\User::where('email','you@example.com')->first()->update(['password'=>'NewStrongPass123'])"` |
 
 ---
 
 ## Testing
 
 ```bash
-php artisan test        # 31 tests, 161 assertions
+php artisan test      # 55 tests, ~400 assertions, in-memory SQLite
 ```
 
-The suite runs on in-memory SQLite and covers: every homepage section, shop filters (search, price, stock, sort, invalid input), category pages, fetch/JSON filtering, pagination, product page and WhatsApp links, hidden inactive products/categories, information pages, 404, sitemap and robots; admin sign-in/out, wrong password, inactive accounts, rate limiting, staff vs owner permissions, password change; company setup saving and showing on the site, address hiding, validation messages, logo upload/removal and SVG rejection; rupee formatting and WhatsApp number normalisation.
+Covers: homepage sections; shop filters, sort, pagination, JSON fragments; product pages; hidden products/categories; customer reviews; cart add/update/remove, stock caps, sold-out refusal, buy now; coupons (minimum, usage limit, counting); delivery quotes (local, unknown PIN, outstation pending/flat, same-day cut-off, free threshold); checkout (order + items + snapshots + stock + customer reuse, validation, COD rules, pending courier charge, empty cart); signed confirmation page and payment reference upload; order tracking; custom enquiries and honeypot; admin login, lockout, inactive accounts, staff restrictions, password change; every admin screen renders; product CRUD with photos; category deletion guard; order status/cancel restock/reopen block, payment, courier charge, shipping, notes, search, CSV; WhatsApp links; enquiry quote and conversion; delivery area PIN parsing and conflicts; coupons; reviews/banners/gallery/pages with HTML sanitising; company and store settings reaching the site; staff accounts; rupee formatting, WhatsApp number normalisation, HTML sanitiser.
 
-### Manual checklist — Phase 1
+### Manual checklist
 
-**Storefront (try on a phone, a tablet and a laptop)**
-- [ ] Homepage: hero, introduction, categories, bestsellers, gift boxes, custom-order panel, promises, reviews, photo grid, WhatsApp band, footer all render
-- [ ] No sideways scrolling on any page at phone width
-- [ ] Phone: bottom navigation is fixed; the active tab is highlighted; WhatsApp tab opens WhatsApp
-- [ ] Header search opens, focuses the box and searches the shop
-- [ ] Shop: category chips (phone) / sidebar (desktop); Filter button opens the drawer on phone
-- [ ] Desktop: typing in search or price updates results without reloading; URL updates; Back button restores previous results
-- [ ] Sort, "In stock only", pagination and "Clear filters" all work
-- [ ] Product page: photo carousel and thumbnails, price with saving, stock label, quantity +/- capped at stock
-- [ ] "Order on WhatsApp" opens WhatsApp with product, quantity and link pre-filled (change quantity first)
-- [ ] Phone: sticky order bar appears once the main button scrolls away
-- [ ] Sold-out product shows "Ask when it's back"
-- [ ] Footer links: all six information pages and contact page open
-- [ ] `/sitemap.xml` lists products; `/robots.txt` shows rules (production only allows indexing)
+**On a phone**
+- [ ] No sideways scrolling; bottom bar works; cart badge updates after adding
+- [ ] Product: quantity, Add to cart toast, Buy now goes to checkout, WhatsApp link includes the quantity
+- [ ] Cart: change quantity, remove, apply a code, check a PIN (try 700029 and 110001)
+- [ ] Checkout: switch Kolkata ↔ outside Kolkata; charge, date and payment options update; place the order
+- [ ] Confirmation: Open WhatsApp, Copy UPI ID, Pay with UPI app (opens your UPI app), submit a reference
+- [ ] Track order with the order number and mobile
+- [ ] Send a custom order enquiry with a photo
 
-**Admin**
-- [ ] `/admin` redirects to sign-in when signed out; wrong password shows an error
-- [ ] Sidebar opens as a drawer on phone
-- [ ] Company setup: change name, tagline, phone, WhatsApp, address → Save → website shows the new values
-- [ ] Upload a logo (PNG) → appears in header; tick "Remove current image" → name returns as text
-- [ ] Enter an invalid GSTIN → the Legal tab opens with the error message
-- [ ] Turn off "Show full address" → contact page shows only city and state
-- [ ] Add FSSAI number → appears in footer
-- [ ] Add Instagram URL → icon appears in footer and contact page
-- [ ] My account: change password with the current password; sign out and back in
+**In the admin**
+- [ ] Dashboard numbers and chart; checklist items tick off as you fill settings
+- [ ] Open the order: mark paid, set Confirmed, add courier, send WhatsApp messages, print invoice
+- [ ] Cancel a test order → stock goes back up
+- [ ] Export orders to CSV and open in Excel
+- [ ] Quote and convert the enquiry
+- [ ] Add a product with photos; set the main photo; check it on the site
+- [ ] Turn COD off / set a courier charge in Store settings → checkout reflects it
+- [ ] Add a delivery area with your PIN codes and a same-day cut-off
+- [ ] Create a staff account; sign in as staff; settings are hidden
 
 ---
 
-## Phase plan
+## Remaining before launch
 
-| Phase | Scope | Status |
-|---|---|---|
-| **1** | Project setup, full database schema, admin authentication, company setup, responsive storefront layout, homepage, catalogue with filters, product details, information pages, SEO basics | ✅ Done |
-| **2** | Session cart, checkout, PIN-code delivery validation and charges, same-day cut-off, order creation in a transaction with stock reduction, UPI manual payment (reference + screenshot), COD switch, order confirmation, WhatsApp order notification, order tracking page | Next |
-| **3** | Admin dashboard charts (Chart.js), product CRUD with multi-image upload, category CRUD, order management (status, payment, courier, notes, invoice print, CSV export), customer management | |
-| **4** | Custom order form + enquiry management, delivery zone/PIN management, WhatsApp & UPI settings, coupons, reviews, banners, pages, gallery management | |
-| **5** | Full test pass, security review, image optimisation, caching, production deployment | |
+These need the owner or a hosting account rather than more code:
 
-In Phase 1 the product page's order button sends the chosen chocolate and quantity to WhatsApp; the **Add to cart / Buy now** buttons arrive with the cart in Phase 2, so no button on the site is decorative.
+- Real brand name, logo, photos, UPI ID, FSSAI number, address and PIN codes (all in the admin).
+- Review the policy pages, ideally with a lawyer.
+- Delete the sample products and demo reviews.
+- Run `composer install` with internet access to create `composer.lock`, then commit it.
+
+Possible next additions if wanted: email notifications (Hostinger SMTP is already in `.env.example`), a payment gateway (Razorpay/PhonePe), stock-movement history, and WebP thumbnails.

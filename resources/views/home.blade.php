@@ -3,32 +3,27 @@
 @section('body_class', 'page-home')
 
 @section('content')
-    @php $hero = $banners->first(); @endphp
-
-    {{-- 1. Hero: dark ganache panel that "drips" into the cream page --}}
-    <section class="hero" aria-labelledby="heroTitle">
-        <div class="container hero__grid">
-            <div class="hero__copy">
-                <p class="hero__kicker">{{ $company->tagline() }}</p>
-                <h1 id="heroTitle" class="hero__title">{{ $hero?->title ?? 'Chocolate, tempered by hand in small batches' }}</h1>
-                <p class="hero__lead">{{ $hero?->subtitle ?? 'Bars, truffles and gift boxes made to order in '.$company->city().'. Same-day delivery across the city and courier to the rest of India.' }}</p>
-                <div class="hero__actions">
-                    <a href="{{ $hero?->button_url ?: route('shop.index') }}" class="btn btn-gold btn-lg">{{ $hero?->button_text ?: 'Shop chocolates' }}</a>
-                    <a href="{{ $whatsapp->customOrderLink() }}" class="btn btn-ghost-light btn-lg" target="_blank" rel="noopener">
-                        <i class="bi bi-whatsapp me-1" aria-hidden="true"></i> Plan a custom order
-                    </a>
+    {{-- 1. Hero: banners managed in Admin › Banners. Several active banners become a slider. --}}
+    <section class="hero" aria-label="Featured">
+        @if ($banners->count() > 1)
+            <div id="heroCarousel" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="6500">
+                <div class="carousel-indicators hero__dots">
+                    @foreach ($banners as $banner)
+                        <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="{{ $loop->index }}" @class(['active' => $loop->first])
+                                @if ($loop->first) aria-current="true" @endif aria-label="Slide {{ $loop->iteration }}"></button>
+                    @endforeach
+                </div>
+                <div class="carousel-inner">
+                    @foreach ($banners as $banner)
+                        <div @class(['carousel-item', 'active' => $loop->first])>
+                            @include('partials.hero-slide', ['banner' => $banner, 'first' => $loop->first])
+                        </div>
+                    @endforeach
                 </div>
             </div>
-            <div class="hero__art">
-                <picture>
-                    @if ($hero?->mobile_image)
-                        <source media="(max-width: 767px)" srcset="{{ $hero->mobile_image_url }}">
-                    @endif
-                    <img src="{{ $hero?->image_url ?? asset('images/placeholders/hero.svg') }}" alt="{{ $hero?->title ?? 'Handmade chocolates' }}"
-                         width="720" height="720" fetchpriority="high">
-                </picture>
-            </div>
-        </div>
+        @else
+            @include('partials.hero-slide', ['banner' => $banners->first(), 'first' => true])
+        @endif
         <svg class="hero__drip" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true">
             <path d="M0 0h1440v34c-38 0-44 40-74 40s-30-28-62-28-40 52-78 52-40-46-80-46-52 22-86 22-38-36-74-36-46 56-90 56-46-50-86-50-42 30-80 30-40-38-78-38-50 44-92 44-44-40-84-40-40 26-76 26-44-46-84-46-46 38-88 38-40-30-76-30-34 14-62 14V0z"/>
         </svg>
@@ -111,9 +106,12 @@
                         <li><i class="bi bi-check2" aria-hidden="true"></i> Custom wrappers and printed tags</li>
                         <li><i class="bi bi-check2" aria-hidden="true"></i> Allow 5–7 days for most orders</li>
                     </ul>
-                    <a href="{{ $whatsapp->customOrderLink() }}" class="btn btn-gold btn-lg" target="_blank" rel="noopener">
-                        <i class="bi bi-whatsapp me-1" aria-hidden="true"></i> Discuss your order
-                    </a>
+                    <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ route('custom-orders.create') }}" class="btn btn-gold btn-lg">Request a quote</a>
+                        <a href="{{ $whatsapp->customOrderLink() }}" class="btn btn-ghost-light btn-lg" target="_blank" rel="noopener">
+                            <i class="bi bi-whatsapp me-1" aria-hidden="true"></i> Ask on WhatsApp
+                        </a>
+                    </div>
                 </div>
                 <img src="{{ asset('images/placeholders/custom-order.svg') }}" alt="" class="custom-cta__art" width="420" height="420" loading="lazy">
             </div>
@@ -157,11 +155,7 @@
                 <div class="review-rail">
                     @foreach ($reviews as $review)
                         <figure class="review-card">
-                            <div class="review-card__stars" aria-label="{{ $review->rating }} out of 5 stars">
-                                @for ($i = 1; $i <= 5; $i++)
-                                    <i class="bi {{ $i <= $review->rating ? 'bi-star-fill' : 'bi-star' }}" aria-hidden="true"></i>
-                                @endfor
-                            </div>
+                            <x-stars :rating="$review->rating" class="review-card__stars" />
                             <blockquote>{{ $review->comment }}</blockquote>
                             <figcaption>{{ $review->customer_name }}@if ($review->location)<span>, {{ $review->location }}</span>@endif</figcaption>
                         </figure>
